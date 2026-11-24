@@ -8,16 +8,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap">
 <style>
-/* Layout: one-screen app. Home = tier lists of levels; Play = stats row, board in a steel shredder frame, control row. */
+/* Layout: one-screen app. Welcome menu -> Levels / Colors / Unstoppable; Play = stats, board in a shredder frame, power-ups, controls. */
 :root {
   --ink: #16172a;        /* page */
-  --steel: #2b2d4a;      /* board frame */
+  --glow: #23244a;       /* page top glow (tinted by equipped color) */
+  --steel: #2b2d4a;      /* panels */
   --steel-hi: #3a3d63;
+  --frame-hi: #3a3d63;   /* board frame (tinted by equipped color) */
+  --frame-lo: #2b2d4a;
   --pit: #1d1e34;        /* board field */
   --line: #ffffff10;
   --text: #f3f1ff;
   --muted: #a3a2c9;
-  --accent: #ffc93c;     /* sun yellow: UI emphasis */
+  --accent: #ffc93c;     /* sun yellow: UI emphasis, coins */
   --danger: #ff6b6b;
   --display: "Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif;
   --body: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
@@ -26,65 +29,122 @@
 [hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body {
-  background: radial-gradient(120% 80% at 50% 0%, #23244a 0%, var(--ink) 60%) fixed, var(--ink);
+  background: radial-gradient(120% 80% at 50% 0%, var(--glow) 0%, var(--ink) 60%) fixed, var(--ink);
   color: var(--text); font-family: var(--body); font-weight: 800;
   overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
 button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { cursor: default; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.coins { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px 7px 8px; border-radius: 999px; background: #00000040;
+  font-family: var(--display); font-size: 18px; color: var(--accent); font-variant-numeric: tabular-nums; flex: none; }
+.coin { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, #ffc93c 45%, #d99a12);
+  box-shadow: inset 0 -2px 0 #0003; display: inline-block; flex: none; }
+.coins.bump { animation: bump .5s; }
+@keyframes bump { 40% { transform: scale(1.18); } }
 
-/* ---------- Home ---------- */
-#home { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.brand { text-align: center; padding-block: 22px 6px; }
-.brand h1 { font-family: var(--display); font-weight: 400; font-size: clamp(42px, 13vw, 64px); letter-spacing: .5px; margin: 0; line-height: 1; }
+/* ---------- Welcome ---------- */
+#welcome { align-items: center; justify-content: center; gap: 14px; overflow: hidden; }
+.wtop { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 2; }
+.floaters { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.floater { position: absolute; top: -80px; border-radius: 22%; opacity: .22; animation: fall linear infinite; }
+@keyframes fall { to { transform: translateY(120vh) rotate(200deg); } }
+.brand { text-align: center; position: relative; }
+.brand h1 { font-family: var(--display); font-weight: 400; font-size: clamp(46px, 15vw, 76px); letter-spacing: .5px; margin: 0; line-height: 1; }
 .brand h1 span { display: inline-block; }
-.brand p { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
-.tier { max-width: 520px; width: 100%; margin: 18px auto 0; }
+.brand p { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
+.menu { display: grid; gap: 12px; width: min(340px, 100%); position: relative; margin-top: 18px; }
+.mbtn { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-radius: 20px;
+  background: var(--steel); box-shadow: inset 0 -5px 0 #0004, inset 0 2px 0 #ffffff14; text-align: left; }
+.mbtn b { font-family: var(--display); font-weight: 400; font-size: 26px; display: block; line-height: 1.05; }
+.mbtn small { color: var(--muted); font-size: 13px; }
+.mbtn.play { background: var(--accent); color: #241a00; }
+.mbtn.play small { color: #5c4300; }
+.mbtn.unst { background: linear-gradient(120deg, #e9509f, #9a5be8 55%, #4f63e8); }
+.mbtn.unst small { color: #ffffffcc; }
+.mbtn svg { width: 30px; height: 30px; flex: none; }
+.mrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sbtn { padding: 12px 4px; border-radius: 16px; background: var(--steel); box-shadow: inset 0 -4px 0 #0004; font-size: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sbtn svg { width: 24px; height: 24px; }
+
+/* ---------- Levels / Colors ---------- */
+.head { display: flex; align-items: center; gap: 10px; padding-top: 8px; padding-bottom: 6px; }
+.head h2 { flex: 1; margin: 0; font-family: var(--display); font-weight: 400; font-size: 28px; text-align: center; }
+.list { max-width: 520px; width: 100%; margin: 0 auto; padding-bottom: 20px; }
+.banner { margin: 10px 0 4px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(120deg, #ffc93c33, #e9509f33); text-align: center; }
+.banner b { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--accent); }
+.tier { margin: 18px 0 0; }
 .tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.tier-head h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
+.tier-head h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
 .tier-head small { color: var(--muted); font-size: 13px; text-align: right; }
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .lv { aspect-ratio: 1; border-radius: 16px; background: var(--steel); box-shadow: inset 0 -4px 0 #0003, inset 0 1px 0 #ffffff14;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 20px; }
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 19px; position: relative; }
 .lv .st { font-size: 11px; letter-spacing: 1px; color: var(--accent); min-height: 13px; }
 .lv.done { background: var(--steel-hi); }
-.lv.locked { opacity: .35; }
+.lv.locked { opacity: .32; }
+.lv.locked svg { width: 18px; height: 18px; }
 .lv.next { box-shadow: inset 0 -4px 0 #0003, 0 0 0 3px var(--tc); }
-.home-foot { display: flex; justify-content: center; gap: 12px; padding-block: 22px 12px; }
-.pill { padding: 10px 16px; border-radius: 999px; background: var(--steel); font-size: 14px; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; margin-top: 12px; }
+.sw { border-radius: 16px; padding: 6px 4px 8px; background: var(--steel); display: flex; flex-direction: column; align-items: center; gap: 5px;
+  font-size: 10px; line-height: 1.15; text-align: center; color: var(--muted); min-width: 0; }
+.sw i { width: 40px; height: 40px; border-radius: 12px; display: block; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
+.sw.locked i { background: repeating-linear-gradient(45deg, #3a3c5e 0 5px, #303252 5px 10px) !important; box-shadow: none; }
+.sw.on { box-shadow: 0 0 0 3px var(--accent); color: var(--text); }
+.note { color: var(--muted); font-size: 14px; text-align: center; margin: 4px 0 0; font-weight: 600; }
 
 /* ---------- Play ---------- */
-#play { gap: 8px; }
+#play { gap: 7px; }
 .topbar { display: flex; align-items: center; gap: 10px; padding-top: 8px; }
 .icon-btn { width: 44px; height: 44px; border-radius: 14px; background: var(--steel); display: grid; place-items: center; flex: none;
   box-shadow: inset 0 -3px 0 #0004; }
 .icon-btn svg { width: 22px; height: 22px; }
 .icon-btn:active { transform: translateY(1px); }
 .title { flex: 1; text-align: center; min-width: 0; }
-.title .lvname { font-family: var(--display); font-size: 30px; line-height: 1; }
+.title .lvname { font-family: var(--display); font-size: 28px; line-height: 1; }
 .chip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 999px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #16172a; background: var(--tc); }
 .stats { display: flex; justify-content: center; gap: 10px; }
-.stat { background: #ffffff0b; border-radius: 14px; padding: 6px 8px; text-align: center; flex: 1; max-width: 120px; min-width: 0; }
-.stat b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.stat span { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.stat { background: #ffffff0b; border-radius: 14px; padding: 5px 8px; text-align: center; flex: 1; max-width: 120px; min-width: 0; }
+.stat b { display: block; font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
 .stat.warn b { color: var(--danger); }
 #stage { flex: 1; min-height: 0; display: grid; place-items: center; position: relative; }
+.powers { min-height: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 420px; width: 100%; margin: 0 auto; }
+.pu { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px 5px; border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff14, #ffffff08); box-shadow: inset 0 -3px 0 #0004; font-size: 11px; }
+.pu svg { width: 22px; height: 22px; }
+.pu .cost { display: inline-flex; align-items: center; gap: 3px; color: var(--accent); font-size: 11px; }
+.pu .cost .coin { width: 11px; height: 11px; }
+.pu .left { position: absolute; top: -5px; right: -3px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent); color: #241a00;
+  font-size: 11px; display: grid; place-items: center; padding: 0 4px; }
+.pu:disabled { opacity: .38; }
+.pu.armed { background: var(--accent); color: #241a00; }
+.pu.armed .cost { color: #241a00; }
 .controls { display: flex; justify-content: center; gap: 12px; }
-.ctl { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 72px; padding: 8px 0; border-radius: 16px; background: var(--steel);
+.ctl { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 72px; padding: 7px 0; border-radius: 16px; background: var(--steel);
   font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); box-shadow: inset 0 -3px 0 #0004; }
-.ctl svg { width: 24px; height: 24px; color: var(--text); }
+.ctl svg { width: 22px; height: 22px; color: var(--text); }
 .ctl:disabled { opacity: .4; }
+.gen { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 15px; }
+.spinner { width: 44px; height: 44px; margin: 0 auto 10px; border-radius: 12px; background: var(--accent); animation: spin 1s ease-in-out infinite; }
+@keyframes spin { 50% { transform: rotate(180deg) scale(.7); border-radius: 50%; background: #e9509f; } 100% { transform: rotate(360deg); } }
+.flash { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-family: var(--display); font-size: 44px; color: var(--accent);
+  text-shadow: 0 4px 0 #0006; pointer-events: none; z-index: 12; animation: flash 1.1s ease-out forwards; white-space: nowrap; }
+@keyframes flash { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } 100% { opacity: 0; transform: translate(-50%, -90%) scale(1); } }
 
 /* board */
-.frame { position: relative; border-radius: calc(var(--cs) * .32); background: linear-gradient(180deg, var(--steel-hi), var(--steel));
+.frame { position: relative; border-radius: calc(var(--cs) * .32); background: linear-gradient(180deg, var(--frame-hi), var(--frame-lo));
   box-shadow: 0 14px 30px #0007, inset 0 2px 0 #ffffff18, inset 0 -5px 0 #0004; touch-action: none; }
 .field { position: absolute; overflow: hidden; border-radius: calc(var(--cs) * .12); background-color: var(--pit);
   background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: var(--cs) var(--cs); box-shadow: inset 0 3px 8px #0008; }
+.field.arming { box-shadow: inset 0 3px 8px #0008, 0 0 0 3px var(--accent); }
 .wall { position: absolute; border-radius: calc(var(--cs) * .14);
   background: repeating-linear-gradient(45deg, #3a3c5e 0 6px, #303252 6px 12px); box-shadow: inset 0 -3px 0 #0005, inset 0 2px 0 #ffffff12; }
 .gate { position: absolute; border-radius: calc(var(--cs) * .16); overflow: hidden; display: grid; place-items: center;
@@ -95,22 +155,22 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .gate svg { position: relative; width: 70%; height: 70%; color: #fff; filter: drop-shadow(0 1px 0 #0006); }
 .gate.pulse { animation: gpulse .5s ease-out; }
 @keyframes gpulse { 50% { filter: brightness(1.6); transform: scale(1.08); } }
-
 .block { position: absolute; left: 0; top: 0; will-change: transform; transition: transform 70ms linear; }
 .block.grab { z-index: 5; filter: brightness(1.12) drop-shadow(0 6px 8px #0008); }
 .block.exiting { transition: transform 300ms cubic-bezier(.5,0,.9,.6); z-index: 4; }
-.cell { position: absolute; background: var(--bc); box-shadow: inset 0 calc(var(--cs) * -.09) 0 var(--bd), inset 0 calc(var(--cs) * .05) 0 #ffffff40; }
+.block.blasting { transition: transform 260ms ease-in, opacity 260ms ease-in; opacity: 0; z-index: 4; }
+.cell { position: absolute; background: var(--bc); }
 .cell::after { content: ""; position: absolute; left: 30%; top: 26%; width: 40%; height: 40%; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ffffffb0, #ffffff22 45%, transparent 70%); }
 .glyph { position: absolute; display: grid; place-items: center; pointer-events: none; color: #fff; }
 .glyph svg { width: calc(var(--cs) * .62); height: calc(var(--cs) * .62); filter: drop-shadow(0 1px 1px #0007); }
-.ice { position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background: linear-gradient(135deg, #e8f6ff99, #bfe3ff55 50%, #e8f6ff99); box-shadow: inset 0 0 0 2px #ffffffaa; display: grid; place-items: center;
+.ice { position: absolute; pointer-events: none; background: linear-gradient(135deg, #e8f6ff99, #bfe3ff55 50%, #e8f6ff99);
+  box-shadow: inset 0 0 0 2px #ffffffaa; display: grid; place-items: center;
   font-family: var(--display); color: #2b5b86; font-size: calc(var(--cs) * .55); transition: opacity .4s; }
 .block.shake { animation: shake .3s; }
 @keyframes shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
 .ghost { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
-.ghost .cell { background: transparent; box-shadow: none; outline: 3px dashed #fff; outline-offset: -4px; }
+.ghost .cell { background: transparent; box-shadow: none !important; outline: 3px dashed #fff; outline-offset: -4px; }
 .ghost .cell::after { display: none; }
 .block.hint { animation: hint 1s ease-in-out infinite; }
 @keyframes hint { 50% { filter: brightness(1.5) drop-shadow(0 0 10px #fff); } }
@@ -118,48 +178,100 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* overlays */
 .overlay { position: absolute; inset: 0; background: #0b0c18cc; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: grid; place-items: center; z-index: 20; padding: 16px; }
-.card { width: min(360px, 100%); background: var(--steel); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
+  display: grid; place-items: center; z-index: 20; padding: 16px; overflow-y: auto; }
+.card { box-sizing: border-box; min-width: 0; width: min(360px, 100%); background: var(--steel); border-radius: 26px; padding: 24px 22px 20px; text-align: center;
   box-shadow: 0 20px 50px #0009, inset 0 2px 0 #ffffff18; }
-.card h3 { font-family: var(--display); font-weight: 400; font-size: 36px; margin: 0 0 6px; }
-.card p { color: var(--muted); margin: 0 0 16px; font-size: 15px; line-height: 1.45; }
-.stars { font-size: 40px; letter-spacing: 6px; color: #ffffff22; margin-bottom: 8px; }
+.card h3 { font-family: var(--display); font-weight: 400; font-size: 34px; margin: 0 0 6px; }
+.card p { color: var(--muted); margin: 0 0 14px; font-size: 15px; line-height: 1.45; font-weight: 700; }
+.stars { font-size: 40px; letter-spacing: 6px; color: #ffffff22; margin-bottom: 6px; }
 .stars .on { color: var(--accent); }
+.reward { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 26px; color: var(--accent); margin-bottom: 10px; }
+.reward .coin { width: 26px; height: 26px; }
+.unlock { display: flex; align-items: center; gap: 12px; text-align: left; background: #00000030; border-radius: 16px; padding: 10px 12px; margin-bottom: 6px; }
+.unlock i { width: 42px; height: 42px; border-radius: 12px; flex: none; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
+.unlock div { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); }
+.unlock b { display: block; color: var(--text); font-size: 16px; }
+.unlock button { padding: 8px 12px; border-radius: 12px; background: #ffffff1a; font-size: 13px; }
 .btn { display: block; width: 100%; padding: 14px; border-radius: 16px; font-size: 18px; background: var(--accent); color: #241a00;
   box-shadow: inset 0 -4px 0 #0003; margin-top: 10px; }
 .btn.alt { background: #ffffff14; color: var(--text); }
+.btn.danger { background: #ff6b6b22; color: var(--danger); }
+.btn:disabled { opacity: .4; }
+.picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 6px 0 4px; }
+.picks button { width: 54px; height: 54px; border-radius: 16px; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
 .rules { text-align: left; display: grid; gap: 10px; margin: 6px 0 14px; color: var(--text); font-size: 15px; line-height: 1.4; font-weight: 600; }
 .rules div { display: flex; gap: 10px; }
 .rules b { color: var(--accent); font-family: var(--display); font-weight: 400; font-size: 18px; min-width: 18px; }
-.toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: #000c; padding: 10px 16px; border-radius: 12px;
-  font-size: 14px; z-index: 15; max-width: 88%; text-align: center; transition: opacity .3s; }
-@media (prefers-reduced-motion: reduce) { .block, .block.exiting { transition-duration: 1ms; } .block.hint, .gate.pulse { animation: none; } }
+textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius: 12px; border: 0; padding: 10px; background: #0005; color: var(--text);
+  font: 600 12px/1.4 ui-monospace, Menlo, monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 .btn { margin-top: 10px; }
+.toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: #000d; padding: 10px 16px; border-radius: 12px;
+  font-size: 14px; z-index: 15; max-width: 88%; text-align: center; transition: opacity .3s; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .block, .block.exiting, .block.blasting { transition-duration: 1ms; }
+  .block.hint, .gate.pulse, .floater, .flash, .spinner { animation: none; }
+}
 </style>
 
-<div id="home" class="screen">
+<!-- Welcome -->
+<div id="welcome" class="screen">
+  <div class="floaters" id="floaters"></div>
+  <div class="wtop"><span class="coins"><i class="coin"></i><span class="coinNum">0</span></span></div>
   <div class="brand">
     <h1 id="logo">ColorShred</h1>
     <p>Slide every block into its matching shredder.</p>
   </div>
-  <div id="tiers"></div>
-  <div class="home-foot">
-    <button class="pill" id="howBtn">How to play</button>
-    <button class="pill" id="soundBtn">Sound: on</button>
+  <div class="menu">
+    <button class="mbtn play" id="playBtn"><span><b>Play</b><small id="playSub">Level 1</small></span>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
+    <button class="mbtn unst" id="unstBtn"><span><b>Unstoppable</b><small id="unstSub">Endless boards against the clock</small></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.2 8.2a5 5 0 1 0 0 7.6L12 12l-6.2-3.8a5 5 0 1 0 0 7.6"/></svg></button>
+    <div class="mrow">
+      <button class="sbtn" id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Levels</button>
+      <button class="sbtn" id="colorsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.8-.4-1.2.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15" cy="7.5" r="1.3" fill="currentColor"/></svg>Colors</button>
+      <button class="sbtn" id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>Settings</button>
+    </div>
   </div>
 </div>
 
+<!-- Levels -->
+<div id="levels" class="screen" hidden>
+  <div class="head">
+    <button class="icon-btn backHome" aria-label="Back to menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Levels</h2>
+    <span class="coins"><i class="coin"></i><span class="coinNum">0</span></span>
+  </div>
+  <div class="scroll" style="flex:1;min-height:0"><div class="list" id="tiers"></div></div>
+</div>
+
+<!-- Colors -->
+<div id="colors" class="screen" hidden>
+  <div class="head">
+    <button class="icon-btn backHome" aria-label="Back to menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Colors</h2>
+    <span class="coins"><i class="coin"></i><span class="coinNum">0</span></span>
+  </div>
+  <div class="scroll" style="flex:1;min-height:0"><div class="list">
+    <p class="note" id="colorsNote">Every level you beat unlocks a new color. Tap one to paint your board with it.</p>
+    <div class="swatches" id="swatches"></div>
+  </div></div>
+</div>
+
+<!-- Play -->
 <div id="play" class="screen" hidden>
   <div class="topbar">
-    <button class="icon-btn" id="backBtn" aria-label="Back to levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="title"><div class="lvname" id="lvName">Level 1</div><span class="chip" id="lvTier">Medium</span></div>
-    <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9.2 9a3 3 0 1 1 4.3 2.7c-.9.4-1.5 1.2-1.5 2.1v.4"/><circle cx="12" cy="18.4" r=".6" fill="currentColor"/></svg></button>
+    <button class="icon-btn" id="backBtn" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="title"><div class="lvname" id="lvName">Level 1</div><span class="chip" id="lvTier">Easy</span></div>
+    <span class="coins"><i class="coin"></i><span class="coinNum">0</span></span>
   </div>
   <div class="stats">
-    <div class="stat" id="movesStat"><b id="movesLeft">0</b><span>Moves left</span></div>
-    <div class="stat" id="blocksStat"><b id="blocksLeft">0</b><span>Blocks</span></div>
+    <div class="stat" id="movesStat"><b id="movesLeft">0</b><span id="movesLabel">Moves left</span></div>
+    <div class="stat"><b id="blocksLeft">0</b><span>Blocks</span></div>
     <div class="stat" id="timeStat" hidden><b id="timeLeft">0:00</b><span>Time</span></div>
   </div>
   <div id="stage"></div>
+  <div class="powers" id="powers"></div>
   <div class="controls">
     <button class="ctl" id="undoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button>
     <button class="ctl" id="restartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>Restart</button>
@@ -169,7 +281,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 <div id="overlay" class="overlay" hidden><div class="card" id="card"></div></div>
 
-<script>
+<script id="src-engine">
 // ColorShred engine: rules + solver. Shared by the browser game and the Node level generator.
 (function (root) {
   'use strict';
@@ -408,46 +520,241 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   if (typeof module !== 'undefined') module.exports = root.CS;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
-<script>window.CS_LEVELS = [{"tier":"medium","w":6,"h":7,"walls":[28,34],"gates":[{"s":"R","p":2,"n":1,"c":6},{"s":"B","p":1,"n":3,"c":3},{"s":"T","p":3,"n":3,"c":3},{"s":"L","p":3,"n":3,"c":9},{"s":"L","p":1,"n":1,"c":1},{"s":"T","p":0,"n":2,"c":1}],"blocks":[{"c":1,"sh":8,"x":2,"y":1},{"c":9,"sh":9,"x":4,"y":2},{"c":9,"sh":1,"x":4,"y":1},{"c":6,"sh":0,"x":3,"y":5},{"c":1,"sh":6,"x":0,"y":0},{"c":9,"sh":3,"x":3,"y":6},{"c":6,"sh":1,"x":0,"y":6},{"c":9,"sh":2,"x":5,"y":4},{"c":1,"sh":4,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":2},{"c":6,"sh":3,"x":1,"y":0},{"c":6,"sh":0,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":4},{"c":3,"sh":0,"x":2,"y":5}],"opt":16,"moves":21,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[28],"gates":[{"s":"B","p":3,"n":2,"c":2},{"s":"T","p":2,"n":3,"c":9},{"s":"L","p":0,"n":2,"c":1},{"s":"L","p":3,"n":3,"c":1},{"s":"B","p":1,"n":1,"c":8},{"s":"R","p":4,"n":2,"c":6}],"blocks":[{"c":2,"sh":0,"x":0,"y":3},{"c":1,"sh":1,"x":2,"y":1},{"c":9,"sh":4,"x":2,"y":2},{"c":1,"sh":3,"x":1,"y":6},{"c":2,"sh":9,"x":4,"y":5},{"c":9,"sh":6,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":1,"y":2},{"c":1,"sh":5,"x":4,"y":0},{"c":2,"sh":2,"x":5,"y":2},{"c":9,"sh":1,"x":0,"y":1},{"c":1,"sh":1,"x":0,"y":0},{"c":6,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":0,"y":2},{"c":6,"sh":1,"x":2,"y":5}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":3,"c":8},{"s":"T","p":1,"n":1,"c":8},{"s":"B","p":0,"n":2,"c":1},{"s":"R","p":4,"n":3,"c":1},{"s":"L","p":1,"n":1,"c":2},{"s":"T","p":5,"n":1,"c":3}],"blocks":[{"c":1,"sh":5,"x":3,"y":0},{"c":1,"sh":1,"x":0,"y":7},{"c":1,"sh":9,"x":3,"y":2},{"c":1,"sh":8,"x":3,"y":4},{"c":3,"sh":2,"x":2,"y":1},{"c":1,"sh":2,"x":5,"y":5},{"c":8,"sh":6,"x":0,"y":0},{"c":8,"sh":7,"x":3,"y":5},{"c":1,"sh":9,"x":0,"y":4,"ax":2},{"c":2,"sh":1,"x":2,"y":7},{"c":1,"sh":7,"x":0,"y":2},{"c":8,"sh":3,"x":0,"y":6},{"c":2,"sh":1,"x":2,"y":3},{"c":3,"sh":2,"x":5,"y":2},{"c":1,"sh":0,"x":4,"y":7}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[31],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":3,"c":8},{"s":"R","p":4,"n":1,"c":9},{"s":"R","p":2,"n":1,"c":6}],"blocks":[{"c":6,"sh":1,"x":0,"y":4},{"c":7,"sh":2,"x":2,"y":5},{"c":7,"sh":4,"x":3,"y":2},{"c":8,"sh":7,"x":4,"y":1},{"c":7,"sh":4,"x":5,"y":4},{"c":7,"sh":9,"x":3,"y":0},{"c":6,"sh":0,"x":0,"y":3},{"c":7,"sh":2,"x":3,"y":5},{"c":8,"sh":6,"x":1,"y":0},{"c":7,"sh":1,"x":0,"y":6},{"c":7,"sh":9,"x":1,"y":3},{"c":7,"sh":1,"x":1,"y":2},{"c":8,"sh":2,"x":4,"y":3},{"c":8,"sh":2,"x":4,"y":5},{"c":7,"sh":0,"x":0,"y":2}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"B","p":5,"n":1,"c":1},{"s":"R","p":5,"n":1,"c":1},{"s":"B","p":2,"n":2,"c":6},{"s":"R","p":3,"n":1,"c":3},{"s":"L","p":1,"n":2,"c":3},{"s":"T","p":3,"n":2,"c":7},{"s":"L","p":4,"n":2,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":1},{"c":3,"sh":6,"x":1,"y":5},{"c":9,"sh":3,"x":3,"y":5},{"c":9,"sh":3,"x":0,"y":4},{"c":3,"sh":3,"x":3,"y":0},{"c":9,"sh":5,"x":4,"y":3},{"c":6,"sh":0,"x":2,"y":0},{"c":6,"sh":8,"x":0,"y":0},{"c":6,"sh":9,"x":0,"y":2},{"c":7,"sh":8,"x":3,"y":2},{"c":6,"sh":0,"x":4,"y":6},{"c":9,"sh":0,"x":0,"y":3},{"c":3,"sh":0,"x":1,"y":1},{"c":7,"sh":0,"x":2,"y":5},{"c":7,"sh":2,"x":5,"y":1}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[32,27],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"B","p":2,"n":2,"c":7},{"s":"T","p":1,"n":2,"c":2},{"s":"L","p":2,"n":1,"c":2},{"s":"L","p":4,"n":2,"c":0}],"blocks":[{"c":0,"sh":7,"x":1,"y":3},{"c":2,"sh":4,"x":2,"y":0},{"c":0,"sh":1,"x":4,"y":0},{"c":0,"sh":3,"x":3,"y":2},{"c":2,"sh":1,"x":4,"y":4},{"c":6,"sh":0,"x":3,"y":5},{"c":6,"sh":7,"x":3,"y":5},{"c":7,"sh":0,"x":5,"y":5},{"c":0,"sh":2,"x":0,"y":3},{"c":2,"sh":7,"x":0,"y":0},{"c":6,"sh":6,"x":0,"y":5},{"c":0,"sh":2,"x":1,"y":2},{"c":7,"sh":0,"x":5,"y":3},{"c":0,"sh":0,"x":5,"y":1},{"c":6,"sh":0,"x":3,"y":3},{"c":2,"sh":1,"x":3,"y":1}],"opt":18,"moves":23,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"B","p":1,"n":1,"c":7},{"s":"T","p":4,"n":1,"c":5},{"s":"L","p":1,"n":3,"c":1},{"s":"R","p":5,"n":1,"c":9}],"blocks":[{"c":5,"sh":0,"x":3,"y":4},{"c":4,"sh":8,"x":1,"y":0},{"c":7,"sh":0,"x":4,"y":0},{"c":4,"sh":6,"x":0,"y":5},{"c":4,"sh":3,"x":3,"y":6},{"c":9,"sh":1,"x":0,"y":3},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":8,"x":2,"y":1},{"c":1,"sh":5,"x":4,"y":4},{"c":1,"sh":2,"x":5,"y":1},{"c":1,"sh":1,"x":2,"y":5},{"c":4,"sh":3,"x":3,"y":3},{"c":4,"sh":3,"x":0,"y":4},{"c":4,"sh":2,"x":0,"y":1,"ax":2},{"c":9,"sh":0,"x":5,"y":0},{"c":5,"sh":0,"x":0,"y":0}],"opt":18,"moves":23,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[33],"gates":[{"s":"B","p":0,"n":2,"c":1},{"s":"L","p":5,"n":3,"c":5},{"s":"L","p":3,"n":1,"c":6},{"s":"R","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":0,"n":2,"c":3}],"blocks":[{"c":6,"sh":4,"x":5,"y":0},{"c":1,"sh":6,"x":3,"y":3},{"c":6,"sh":8,"x":3,"y":1},{"c":6,"sh":1,"x":1,"y":6},{"c":6,"sh":2,"x":0,"y":2},{"c":3,"sh":1,"x":0,"y":0},{"c":6,"sh":4,"x":0,"y":4},{"c":5,"sh":3,"x":1,"y":7,"ax":1},{"c":5,"sh":3,"x":3,"y":6},{"c":3,"sh":2,"x":2,"y":4},{"c":5,"sh":1,"x":4,"y":5},{"c":1,"sh":6,"x":4,"y":2},{"c":5,"sh":1,"x":4,"y":7},{"c":3,"sh":0,"x":1,"y":4},{"c":6,"sh":0,"x":3,"y":0},{"c":1,"sh":0,"x":2,"y":3},{"c":1,"sh":2,"x":1,"y":2}],"opt":19,"moves":24,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[19],"gates":[{"s":"B","p":0,"n":3,"c":4},{"s":"R","p":6,"n":2,"c":2},{"s":"T","p":1,"n":1,"c":1},{"s":"T","p":4,"n":2,"c":9}],"blocks":[{"c":4,"sh":9,"x":2,"y":1},{"c":4,"sh":3,"x":2,"y":3},{"c":4,"sh":1,"x":2,"y":7},{"c":4,"sh":1,"x":0,"y":4},{"c":9,"sh":6,"x":4,"y":0},{"c":1,"sh":0,"x":0,"y":7},{"c":1,"sh":4,"x":1,"y":0},{"c":9,"sh":1,"x":2,"y":6},{"c":4,"sh":4,"x":4,"y":5},{"c":4,"sh":7,"x":2,"y":4},{"c":1,"sh":2,"x":0,"y":0},{"c":4,"sh":2,"x":5,"y":2},{"c":2,"sh":0,"x":4,"y":4},{"c":4,"sh":2,"x":1,"y":6},{"c":4,"sh":8,"x":0,"y":5},{"c":4,"sh":0,"x":2,"y":2},{"c":9,"sh":0,"x":2,"y":0}],"opt":19,"moves":24,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":6,"n":2,"c":9},{"s":"R","p":2,"n":3,"c":0},{"s":"L","p":1,"n":1,"c":6},{"s":"B","p":2,"n":3,"c":2}],"blocks":[{"c":0,"sh":4,"x":1,"y":5},{"c":2,"sh":2,"x":0,"y":3},{"c":2,"sh":3,"x":0,"y":1},{"c":2,"sh":6,"x":3,"y":4},{"c":2,"sh":9,"x":3,"y":2},{"c":2,"sh":1,"x":2,"y":6,"ax":2},{"c":0,"sh":7,"x":4,"y":5},{"c":6,"sh":0,"x":5,"y":4},{"c":2,"sh":0,"x":4,"y":7},{"c":2,"sh":4,"x":5,"y":1},{"c":2,"sh":0,"x":3,"y":7},{"c":9,"sh":3,"x":1,"y":3},{"c":2,"sh":5,"x":3,"y":0},{"c":2,"sh":0,"x":2,"y":5},{"c":2,"sh":2,"x":0,"y":5},{"c":2,"sh":0,"x":5,"y":0},{"c":0,"sh":0,"x":1,"y":4},{"c":2,"sh":3,"x":0,"y":2}],"opt":20,"moves":25,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[10],"gates":[{"s":"L","p":4,"n":3,"c":2},{"s":"R","p":3,"n":1,"c":8},{"s":"L","p":0,"n":2,"c":8},{"s":"T","p":0,"n":3,"c":1},{"s":"B","p":2,"n":3,"c":1},{"s":"T","p":5,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":7},{"s":"R","p":0,"n":1,"c":5}],"blocks":[{"c":8,"sh":2,"x":0,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":2,"sh":4,"x":2,"y":2},{"c":8,"sh":6,"x":1,"y":5},{"c":1,"sh":0,"x":5,"y":4},{"c":1,"sh":6,"x":3,"y":3},{"c":7,"sh":2,"x":0,"y":6},{"c":1,"sh":6,"x":1,"y":0},{"c":2,"sh":9,"x":3,"y":6},{"c":2,"sh":7,"x":4,"y":2},{"c":7,"sh":0,"x":0,"y":3},{"c":2,"sh":0,"x":2,"y":5,"ax":1},{"c":1,"sh":0,"x":5,"y":6},{"c":1,"sh":8,"x":0,"y":4},{"c":8,"sh":1,"x":1,"y":7},{"c":8,"sh":0,"x":3,"y":1},{"c":8,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":5,"y":5},{"c":5,"sh":0,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"B","p":2,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":3},{"c":6,"sh":1,"x":0,"y":3},{"c":6,"sh":9,"x":2,"y":0},{"c":6,"sh":9,"x":4,"y":0},{"c":6,"sh":6,"x":4,"y":1},{"c":6,"sh":8,"x":1,"y":5},{"c":9,"sh":1,"x":3,"y":4},{"c":9,"sh":3,"x":3,"y":6},{"c":0,"sh":0,"x":1,"y":0},{"c":9,"sh":0,"x":0,"y":5},{"c":3,"sh":0,"x":1,"y":7},{"c":6,"sh":0,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":1},{"c":9,"sh":3,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":1},{"c":6,"sh":0,"x":5,"y":4},{"c":0,"sh":2,"x":2,"y":6},{"c":6,"sh":3,"x":3,"y":5,"ax":1},{"c":9,"sh":1,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[8,9],"gates":[{"s":"L","p":4,"n":2,"c":9},{"s":"L","p":0,"n":1,"c":3},{"s":"B","p":3,"n":3,"c":1},{"s":"B","p":0,"n":1,"c":5},{"s":"R","p":4,"n":1,"c":7}],"blocks":[{"c":1,"sh":8,"x":3,"y":3,"ax":2},{"c":1,"sh":0,"x":1,"y":0},{"c":9,"sh":9,"x":4,"y":2},{"c":1,"sh":8,"x":0,"y":3},{"c":9,"sh":0,"x":3,"y":2},{"c":1,"sh":7,"x":4,"y":0},{"c":9,"sh":9,"x":1,"y":5},{"c":9,"sh":8,"x":3,"y":5},{"c":3,"sh":3,"x":2,"y":0,"ax":1},{"c":9,"sh":6,"x":0,"y":1},{"c":3,"sh":0,"x":0,"y":6},{"c":1,"sh":1,"x":4,"y":6},{"c":9,"sh":7,"x":1,"y":3}],"opt":16,"moves":21,"relocs":3},{"tier":"medium","w":6,"h":7,"walls":[15],"gates":[{"s":"R","p":5,"n":1,"c":3},{"s":"B","p":1,"n":3,"c":1},{"s":"T","p":3,"n":3,"c":9},{"s":"B","p":5,"n":1,"c":9},{"s":"L","p":5,"n":1,"c":6}],"blocks":[{"c":9,"sh":8,"x":4,"y":0,"ax":2},{"c":1,"sh":8,"x":1,"y":1},{"c":1,"sh":5,"x":4,"y":2},{"c":9,"sh":7,"x":1,"y":3},{"c":9,"sh":0,"x":5,"y":6,"ax":2},{"c":1,"sh":9,"x":2,"y":5},{"c":9,"sh":4,"x":0,"y":3},{"c":9,"sh":2,"x":0,"y":0},{"c":9,"sh":8,"x":4,"y":4},{"c":1,"sh":9,"x":2,"y":0},{"c":6,"sh":0,"x":1,"y":3},{"c":9,"sh":0,"x":2,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":1,"sh":0,"x":0,"y":6}],"opt":17,"moves":22,"relocs":3},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":1,"c":2},{"s":"L","p":3,"n":1,"c":8},{"s":"L","p":5,"n":3,"c":3},{"s":"R","p":4,"n":1,"c":9},{"s":"B","p":1,"n":3,"c":0}],"blocks":[{"c":2,"sh":1,"x":3,"y":5},{"c":0,"sh":5,"x":1,"y":0,"ax":2},{"c":8,"sh":3,"x":0,"y":2},{"c":3,"sh":0,"x":3,"y":4},{"c":0,"sh":8,"x":4,"y":0},{"c":3,"sh":3,"x":0,"y":6},{"c":0,"sh":8,"x":0,"y":3},{"c":3,"sh":9,"x":3,"y":3},{"c":3,"sh":3,"x":3,"y":6},{"c":2,"sh":0,"x":2,"y":3},{"c":3,"sh":9,"x":1,"y":4},{"c":2,"sh":0,"x":5,"y":3},{"c":2,"sh":3,"x":2,"y":7},{"c":0,"sh":2,"x":5,"y":4},{"c":3,"sh":0,"x":5,"y":7,"ax":1},{"c":9,"sh":0,"x":1,"y":7},{"c":8,"sh":3,"x":3,"y":2}],"opt":20,"moves":25,"relocs":3},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"L","p":3,"n":3,"c":6},{"s":"B","p":0,"n":1,"c":1},{"s":"L","p":0,"n":1,"c":2}],"blocks":[{"c":6,"sh":2,"x":4,"y":2},{"c":4,"sh":5,"x":3,"y":4},{"c":2,"sh":3,"x":0,"y":1},{"c":4,"sh":2,"x":1,"y":5,"ax":2},{"c":6,"sh":8,"x":0,"y":3},{"c":1,"sh":0,"x":0,"y":0},{"c":2,"sh":3,"x":3,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":4,"sh":8,"x":2,"y":2},{"c":4,"sh":3,"x":3,"y":6},{"c":2,"sh":1,"x":0,"y":2},{"c":2,"sh":3,"x":1,"y":0},{"c":6,"sh":2,"x":2,"y":4,"ax":1}],"opt":17,"moves":22,"relocs":4},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":2,"c":6},{"s":"B","p":4,"n":1,"c":5},{"s":"B","p":0,"n":3,"c":1},{"s":"L","p":0,"n":1,"c":0},{"s":"T","p":3,"n":2,"c":0},{"s":"R","p":3,"n":3,"c":4}],"blocks":[{"c":4,"sh":6,"x":1,"y":3},{"c":4,"sh":4,"x":3,"y":0},{"c":4,"sh":0,"x":0,"y":6},{"c":1,"sh":4,"x":4,"y":4},{"c":6,"sh":2,"x":5,"y":4},{"c":4,"sh":7,"x":2,"y":6},{"c":1,"sh":0,"x":2,"y":6},{"c":4,"sh":8,"x":3,"y":3},{"c":1,"sh":2,"x":1,"y":5},{"c":6,"sh":0,"x":0,"y":4,"ax":1},{"c":0,"sh":4,"x":2,"y":0},{"c":4,"sh":1,"x":4,"y":2},{"c":1,"sh":9,"x":0,"y":1},{"c":5,"sh":2,"x":0,"y":2},{"c":1,"sh":8,"x":4,"y":0},{"c":5,"sh":0,"x":1,"y":7},{"c":4,"sh":0,"x":3,"y":5},{"c":1,"sh":2,"x":5,"y":6}],"opt":22,"moves":27,"relocs":4},{"tier":"medium","w":6,"h":7,"walls":[33],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":6},{"s":"R","p":1,"n":3,"c":6},{"s":"T","p":2,"n":2,"c":0},{"s":"L","p":6,"n":1,"c":8}],"blocks":[{"c":6,"sh":7,"x":1,"y":3},{"c":8,"sh":3,"x":2,"y":6},{"c":7,"sh":2,"x":5,"y":0},{"c":6,"sh":3,"x":0,"y":1},{"c":7,"sh":6,"x":4,"y":4},{"c":0,"sh":4,"x":4,"y":1},{"c":6,"sh":6,"x":0,"y":4},{"c":7,"sh":2,"x":3,"y":3},{"c":6,"sh":0,"x":5,"y":2},{"c":7,"sh":7,"x":2,"y":1},{"c":8,"sh":0,"x":1,"y":6},{"c":0,"sh":0,"x":5,"y":3},{"c":8,"sh":0,"x":0,"y":6},{"c":6,"sh":2,"x":1,"y":2},{"c":8,"sh":1,"x":2,"y":0}],"opt":20,"moves":25,"relocs":5},{"tier":"medium","w":6,"h":8,"walls":[15,28],"gates":[{"s":"B","p":2,"n":2,"c":2},{"s":"T","p":0,"n":2,"c":4},{"s":"R","p":5,"n":2,"c":9},{"s":"L","p":3,"n":2,"c":9},{"s":"T","p":4,"n":2,"c":7},{"s":"R","p":2,"n":2,"c":7},{"s":"R","p":0,"n":1,"c":8}],"blocks":[{"c":9,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":4},{"c":9,"sh":1,"x":0,"y":2},{"c":9,"sh":8,"x":0,"y":5},{"c":7,"sh":1,"x":0,"y":3},{"c":4,"sh":9,"x":3,"y":5},{"c":7,"sh":9,"x":4,"y":2,"ax":1},{"c":9,"sh":0,"x":2,"y":1},{"c":7,"sh":3,"x":2,"y":0},{"c":9,"sh":2,"x":2,"y":4},{"c":4,"sh":9,"x":2,"y":3},{"c":7,"sh":1,"x":3,"y":1},{"c":8,"sh":0,"x":4,"y":3},{"c":9,"sh":2,"x":5,"y":6},{"c":2,"sh":9,"x":0,"y":0},{"c":2,"sh":2,"x":3,"y":6},{"c":7,"sh":1,"x":1,"y":6}],"opt":23,"moves":28,"relocs":6},{"tier":"medium","w":6,"h":7,"walls":[8,27],"gates":[{"s":"T","p":1,"n":3,"c":7},{"s":"B","p":1,"n":2,"c":5},{"s":"R","p":3,"n":1,"c":1},{"s":"L","p":1,"n":2,"c":8},{"s":"L","p":4,"n":2,"c":8}],"blocks":[{"c":5,"sh":1,"x":1,"y":4},{"c":7,"sh":1,"x":3,"y":3},{"c":8,"sh":2,"x":1,"y":5},{"c":5,"sh":7,"x":2,"y":1},{"c":8,"sh":3,"x":2,"y":0},{"c":5,"sh":8,"x":0,"y":1},{"c":7,"sh":1,"x":4,"y":6},{"c":5,"sh":4,"x":0,"y":4},{"c":5,"sh":1,"x":2,"y":6},{"c":7,"sh":1,"x":1,"y":3},{"c":8,"sh":3,"x":3,"y":5},{"c":7,"sh":1,"x":4,"y":1},{"c":8,"sh":7,"x":4,"y":3},{"c":8,"sh":0,"x":0,"y":3},{"c":8,"sh":0,"x":1,"y":0}],"opt":22,"moves":27,"relocs":7},{"tier":"hard","w":6,"h":8,"walls":[8,26],"gates":[{"s":"L","p":3,"n":3,"c":1},{"s":"T","p":0,"n":3,"c":1},{"s":"R","p":2,"n":2,"c":7},{"s":"B","p":3,"n":3,"c":7},{"s":"B","p":0,"n":1,"c":0},{"s":"R","p":5,"n":1,"c":0},{"s":"T","p":4,"n":2,"c":2},{"s":"R","p":0,"n":1,"c":9},{"s":"R","p":7,"n":1,"c":9}],"blocks":[{"c":7,"sh":9,"x":4,"y":0},{"c":7,"sh":8,"x":1,"y":2},{"c":7,"sh":6,"x":4,"y":2,"ax":2},{"c":0,"sh":4,"x":0,"y":4},{"c":7,"sh":2,"x":4,"y":4},{"c":1,"sh":2,"x":3,"y":4},{"c":2,"sh":0,"x":4,"y":7},{"c":1,"sh":11,"x":0,"y":0},{"c":0,"sh":4,"x":2,"y":5},{"c":0,"sh":1,"x":3,"y":6},{"c":1,"sh":7,"x":0,"y":6},{"c":7,"sh":2,"x":5,"y":6},{"c":7,"sh":8,"x":3,"y":1},{"c":0,"sh":0,"x":3,"y":0},{"c":2,"sh":2,"x":0,"y":2},{"c":0,"sh":2,"x":5,"y":4}],"opt":20,"moves":23,"relocs":4},{"tier":"hard","w":6,"h":9,"walls":[38,26],"gates":[{"s":"R","p":2,"n":2,"c":6},{"s":"B","p":4,"n":2,"c":5},{"s":"R","p":6,"n":2,"c":9},{"s":"T","p":1,"n":3,"c":9},{"s":"L","p":0,"n":2,"c":0},{"s":"B","p":0,"n":1,"c":8},{"s":"L","p":8,"n":1,"c":8}],"blocks":[{"c":8,"sh":4,"x":1,"y":6},{"c":6,"sh":2,"x":5,"y":3},{"c":8,"sh":4,"x":3,"y":6},{"c":8,"sh":3,"x":1,"y":1},{"c":6,"sh":1,"x":3,"y":2},{"c":9,"sh":12,"x":0,"y":0},{"c":0,"sh":9,"x":4,"y":0,"ice":4},{"c":6,"sh":11,"x":3,"y":5},{"c":6,"sh":12,"x":1,"y":3,"ice":4},{"c":9,"sh":0,"x":5,"y":6,"ice":5},{"c":0,"sh":2,"x":0,"y":6,"ice":5},{"c":9,"sh":10,"x":0,"y":3},{"c":0,"sh":7,"x":4,"y":7},{"c":6,"sh":0,"x":4,"y":3},{"c":0,"sh":1,"x":3,"y":4},{"c":0,"sh":2,"x":2,"y":7},{"c":9,"sh":3,"x":0,"y":2}],"opt":21,"moves":24,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"T","p":3,"n":2,"c":9},{"s":"L","p":8,"n":1,"c":5},{"s":"L","p":0,"n":3,"c":7},{"s":"B","p":4,"n":1,"c":7},{"s":"R","p":0,"n":2,"c":4},{"s":"R","p":4,"n":2,"c":0},{"s":"B","p":0,"n":1,"c":0}],"blocks":[{"c":7,"sh":11,"x":2,"y":4},{"c":9,"sh":2,"x":4,"y":2},{"c":4,"sh":5,"x":5,"y":7},{"c":7,"sh":10,"x":2,"y":6},{"c":9,"sh":1,"x":1,"y":0},{"c":9,"sh":6,"x":1,"y":1},{"c":7,"sh":4,"x":0,"y":6},{"c":0,"sh":5,"x":5,"y":5},{"c":0,"sh":0,"x":6,"y":0},{"c":7,"sh":8,"x":5,"y":3},{"c":4,"sh":5,"x":0,"y":4},{"c":0,"sh":4,"x":1,"y":6},{"c":5,"sh":3,"x":2,"y":1},{"c":7,"sh":0,"x":5,"y":2},{"c":9,"sh":9,"x":3,"y":6,"ax":2},{"c":4,"sh":9,"x":5,"y":1},{"c":9,"sh":0,"x":3,"y":7},{"c":4,"sh":6,"x":0,"y":2},{"c":4,"sh":0,"x":3,"y":0,"ax":1}],"opt":23,"moves":26,"relocs":4},{"tier":"hard","w":7,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":1,"c":2},{"s":"R","p":4,"n":1,"c":3},{"s":"L","p":5,"n":2,"c":3},{"s":"B","p":4,"n":1,"c":8},{"s":"R","p":2,"n":1,"c":4},{"s":"B","p":0,"n":3,"c":6}],"blocks":[{"c":4,"sh":3,"x":4,"y":1},{"c":3,"sh":3,"x":2,"y":5,"ax":1},{"c":3,"sh":1,"x":2,"y":6},{"c":3,"sh":7,"x":2,"y":3},{"c":2,"sh":1,"x":3,"y":0},{"c":3,"sh":7,"x":4,"y":3,"ice":3},{"c":6,"sh":10,"x":0,"y":1,"ax":2},{"c":6,"sh":6,"x":5,"y":5},{"c":3,"sh":11,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":5},{"c":4,"sh":1,"x":1,"y":2},{"c":4,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":6},{"c":3,"sh":6,"x":4,"y":6},{"c":3,"sh":0,"x":1,"y":6,"ice":2},{"c":3,"sh":0,"x":6,"y":0},{"c":8,"sh":0,"x":5,"y":0},{"c":8,"sh":2,"x":4,"y":2,"ax":2},{"c":6,"sh":1,"x":5,"y":2},{"c":6,"sh":1,"x":2,"y":1},{"c":8,"sh":4,"x":6,"y":3}],"opt":25,"moves":28,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[38],"gates":[{"s":"L","p":1,"n":2,"c":1},{"s":"T","p":0,"n":2,"c":5},{"s":"R","p":1,"n":3,"c":6},{"s":"R","p":6,"n":3,"c":6},{"s":"T","p":3,"n":1,"c":0},{"s":"B","p":4,"n":2,"c":4},{"s":"L","p":5,"n":1,"c":3},{"s":"L","p":7,"n":2,"c":3}],"blocks":[{"c":5,"sh":1,"x":2,"y":2},{"c":5,"sh":6,"x":5,"y":4},{"c":0,"sh":2,"x":6,"y":2},{"c":6,"sh":7,"x":2,"y":7},{"c":6,"sh":3,"x":4,"y":8,"ax":1},{"c":5,"sh":1,"x":0,"y":0,"ice":2},{"c":3,"sh":11,"x":1,"y":6,"ice":5},{"c":1,"sh":12,"x":4,"y":6},{"c":1,"sh":12,"x":3,"y":0},{"c":1,"sh":9,"x":0,"y":7},{"c":1,"sh":12,"x":2,"y":3},{"c":3,"sh":1,"x":5,"y":1},{"c":6,"sh":0,"x":6,"y":4},{"c":5,"sh":7,"x":1,"y":0},{"c":5,"sh":6,"x":0,"y":4},{"c":5,"sh":2,"x":0,"y":1},{"c":1,"sh":2,"x":5,"y":2},{"c":1,"sh":0,"x":5,"y":7},{"c":4,"sh":0,"x":4,"y":5,"ax":2},{"c":0,"sh":0,"x":0,"y":6},{"c":1,"sh":0,"x":3,"y":4}],"opt":25,"moves":28,"relocs":4},{"tier":"hard","w":7,"h":8,"walls":[33,44,38],"gates":[{"s":"R","p":2,"n":3,"c":5},{"s":"B","p":1,"n":1,"c":1},{"s":"T","p":3,"n":3,"c":3},{"s":"L","p":3,"n":3,"c":6},{"s":"T","p":1,"n":1,"c":0}],"blocks":[{"c":5,"sh":2,"x":6,"y":4},{"c":5,"sh":11,"x":2,"y":3},{"c":3,"sh":5,"x":3,"y":0},{"c":5,"sh":12,"x":0,"y":4},{"c":5,"sh":1,"x":1,"y":5},{"c":6,"sh":1,"x":1,"y":0},{"c":6,"sh":8,"x":0,"y":6},{"c":3,"sh":8,"x":0,"y":2},{"c":3,"sh":1,"x":4,"y":5,"ice":2},{"c":5,"sh":0,"x":5,"y":0,"ice":3},{"c":3,"sh":7,"x":5,"y":0},{"c":5,"sh":0,"x":4,"y":7},{"c":5,"sh":6,"x":2,"y":1},{"c":1,"sh":0,"x":1,"y":1},{"c":3,"sh":8,"x":5,"y":2},{"c":1,"sh":0,"x":5,"y":6},{"c":6,"sh":0,"x":1,"y":3},{"c":1,"sh":0,"x":4,"y":6},{"c":6,"sh":1,"x":2,"y":7,"ice":5},{"c":6,"sh":1,"x":5,"y":7,"ice":2},{"c":1,"sh":0,"x":0,"y":0}],"opt":25,"moves":28,"relocs":4},{"tier":"hard","w":6,"h":9,"walls":[],"gates":[{"s":"R","p":1,"n":3,"c":2},{"s":"R","p":8,"n":1,"c":5},{"s":"B","p":4,"n":2,"c":5},{"s":"T","p":2,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":4},{"s":"R","p":5,"n":1,"c":9},{"s":"B","p":0,"n":2,"c":7},{"s":"T","p":0,"n":1,"c":3}],"blocks":[{"c":2,"sh":12,"x":3,"y":0},{"c":2,"sh":1,"x":1,"y":6},{"c":2,"sh":11,"x":3,"y":3},{"c":2,"sh":9,"x":1,"y":4},{"c":2,"sh":11,"x":0,"y":7},{"c":2,"sh":9,"x":0,"y":2},{"c":2,"sh":2,"x":4,"y":6},{"c":7,"sh":4,"x":3,"y":4},{"c":4,"sh":0,"x":0,"y":0},{"c":7,"sh":0,"x":2,"y":2},{"c":5,"sh":8,"x":0,"y":5},{"c":3,"sh":0,"x":4,"y":1},{"c":5,"sh":7,"x":4,"y":7},{"c":2,"sh":7,"x":4,"y":1,"ax":1},{"c":9,"sh":0,"x":1,"y":0},{"c":4,"sh":0,"x":3,"y":8},{"c":4,"sh":0,"x":5,"y":4},{"c":4,"sh":9,"x":4,"y":5,"ice":4},{"c":9,"sh":1,"x":1,"y":1},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":0,"x":2,"y":0},{"c":2,"sh":0,"x":0,"y":3}],"opt":26,"moves":29,"relocs":4},{"tier":"hard","w":7,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":2,"c":8},{"s":"B","p":1,"n":3,"c":8},{"s":"R","p":5,"n":3,"c":0},{"s":"T","p":6,"n":1,"c":0},{"s":"T","p":2,"n":1,"c":6},{"s":"T","p":4,"n":1,"c":6},{"s":"L","p":4,"n":2,"c":5},{"s":"L","p":1,"n":1,"c":5},{"s":"B","p":5,"n":2,"c":2}],"blocks":[{"c":8,"sh":12,"x":3,"y":6},{"c":8,"sh":8,"x":0,"y":5},{"c":2,"sh":4,"x":6,"y":0},{"c":6,"sh":2,"x":6,"y":5},{"c":2,"sh":9,"x":3,"y":1},{"c":2,"sh":6,"x":2,"y":2},{"c":2,"sh":1,"x":4,"y":4},{"c":0,"sh":3,"x":0,"y":7},{"c":8,"sh":0,"x":2,"y":6,"ax":2},{"c":8,"sh":0,"x":2,"y":4,"ax":2},{"c":6,"sh":2,"x":0,"y":1},{"c":0,"sh":0,"x":1,"y":6},{"c":0,"sh":0,"x":0,"y":0},{"c":8,"sh":2,"x":1,"y":3,"ax":2},{"c":8,"sh":6,"x":5,"y":2},{"c":0,"sh":1,"x":4,"y":7},{"c":0,"sh":0,"x":0,"y":3},{"c":2,"sh":1,"x":3,"y":5},{"c":8,"sh":11,"x":1,"y":0},{"c":5,"sh":0,"x":3,"y":2},{"c":0,"sh":0,"x":0,"y":4},{"c":5,"sh":0,"x":1,"y":1,"ax":1}],"opt":26,"moves":29,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"B","p":4,"n":3,"c":6},{"s":"T","p":6,"n":1,"c":6},{"s":"L","p":6,"n":3,"c":2},{"s":"T","p":0,"n":1,"c":2},{"s":"R","p":1,"n":3,"c":1},{"s":"R","p":5,"n":1,"c":4},{"s":"R","p":7,"n":2,"c":0}],"blocks":[{"c":2,"sh":11,"x":0,"y":5},{"c":1,"sh":0,"x":0,"y":1,"ax":1},{"c":6,"sh":3,"x":1,"y":8},{"c":6,"sh":10,"x":5,"y":4,"ax":2},{"c":4,"sh":0,"x":4,"y":1},{"c":6,"sh":9,"x":5,"y":1,"ax":2},{"c":2,"sh":2,"x":4,"y":7},{"c":0,"sh":12,"x":2,"y":3},{"c":4,"sh":1,"x":2,"y":0},{"c":4,"sh":1,"x":5,"y":8},{"c":6,"sh":10,"x":0,"y":2},{"c":2,"sh":0,"x":0,"y":8},{"c":2,"sh":9,"x":5,"y":3},{"c":0,"sh":7,"x":2,"y":5},{"c":4,"sh":0,"x":6,"y":7},{"c":0,"sh":8,"x":2,"y":1},{"c":1,"sh":0,"x":3,"y":4},{"c":6,"sh":4,"x":1,"y":0},{"c":1,"sh":3,"x":3,"y":2,"ax":1},{"c":0,"sh":0,"x":4,"y":0,"ice":3},{"c":2,"sh":1,"x":5,"y":0},{"c":6,"sh":0,"x":0,"y":6}],"opt":26,"moves":29,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"R","p":4,"n":1,"c":5},{"s":"B","p":2,"n":2,"c":5},{"s":"R","p":6,"n":1,"c":0},{"s":"L","p":2,"n":1,"c":2},{"s":"T","p":0,"n":1,"c":2},{"s":"R","p":1,"n":1,"c":4},{"s":"T","p":2,"n":2,"c":8}],"blocks":[{"c":5,"sh":9,"x":4,"y":0},{"c":0,"sh":3,"x":3,"y":6},{"c":5,"sh":8,"x":1,"y":2},{"c":4,"sh":3,"x":3,"y":7},{"c":5,"sh":5,"x":3,"y":1},{"c":5,"sh":4,"x":0,"y":0},{"c":8,"sh":4,"x":1,"y":4},{"c":4,"sh":0,"x":2,"y":0},{"c":2,"sh":4,"x":2,"y":4},{"c":5,"sh":9,"x":1,"y":7,"ice":2},{"c":5,"sh":0,"x":3,"y":4,"ice":5},{"c":5,"sh":9,"x":4,"y":4},{"c":5,"sh":0,"x":4,"y":3},{"c":5,"sh":4,"x":0,"y":6},{"c":5,"sh":7,"x":5,"y":7},{"c":5,"sh":2,"x":1,"y":0},{"c":5,"sh":5,"x":5,"y":2},{"c":5,"sh":0,"x":3,"y":0},{"c":0,"sh":0,"x":0,"y":5},{"c":2,"sh":0,"x":6,"y":0},{"c":2,"sh":0,"x":0,"y":4},{"c":5,"sh":0,"x":6,"y":6},{"c":0,"sh":0,"x":4,"y":5},{"c":0,"sh":1,"x":2,"y":3}],"opt":28,"moves":31,"relocs":4},{"tier":"hard","w":6,"h":8,"walls":[10],"gates":[{"s":"L","p":7,"n":1,"c":3},{"s":"B","p":2,"n":3,"c":6},{"s":"R","p":6,"n":2,"c":6},{"s":"R","p":2,"n":3,"c":8},{"s":"L","p":0,"n":1,"c":0},{"s":"T","p":1,"n":2,"c":0},{"s":"L","p":4,"n":2,"c":2},{"s":"T","p":4,"n":2,"c":2}],"blocks":[{"c":6,"sh":2,"x":4,"y":4,"ice":3},{"c":2,"sh":1,"x":2,"y":0},{"c":2,"sh":7,"x":1,"y":3},{"c":2,"sh":5,"x":0,"y":5},{"c":0,"sh":10,"x":0,"y":1},{"c":0,"sh":2,"x":3,"y":1},{"c":8,"sh":8,"x":3,"y":6},{"c":6,"sh":0,"x":2,"y":1},{"c":3,"sh":0,"x":1,"y":0,"ice":5},{"c":8,"sh":0,"x":2,"y":7},{"c":3,"sh":0,"x":5,"y":5},{"c":0,"sh":0,"x":4,"y":0,"ice":2},{"c":8,"sh":1,"x":1,"y":2},{"c":3,"sh":1,"x":3,"y":3},{"c":6,"sh":0,"x":5,"y":3},{"c":6,"sh":0,"x":5,"y":6},{"c":0,"sh":0,"x":4,"y":7},{"c":8,"sh":0,"x":4,"y":2},{"c":0,"sh":0,"x":2,"y":6,"ice":4,"ax":2},{"c":6,"sh":0,"x":3,"y":5},{"c":0,"sh":0,"x":5,"y":2},{"c":8,"sh":0,"x":5,"y":1},{"c":0,"sh":0,"x":0,"y":0},{"c":2,"sh":0,"x":1,"y":1,"ice":3},{"c":8,"sh":0,"x":3,"y":4},{"c":0,"sh":0,"x":5,"y":7}],"opt":30,"moves":33,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[17,16],"gates":[{"s":"L","p":0,"n":2,"c":5},{"s":"T","p":5,"n":2,"c":3},{"s":"L","p":4,"n":1,"c":3},{"s":"R","p":4,"n":3,"c":7},{"s":"R","p":1,"n":1,"c":1},{"s":"T","p":2,"n":2,"c":4},{"s":"B","p":5,"n":2,"c":8}],"blocks":[{"c":3,"sh":6,"x":5,"y":0},{"c":5,"sh":12,"x":4,"y":5},{"c":4,"sh":7,"x":0,"y":1},{"c":5,"sh":1,"x":5,"y":2},{"c":7,"sh":12,"x":2,"y":3},{"c":7,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":4,"y":0},{"c":7,"sh":7,"x":3,"y":7},{"c":7,"sh":9,"x":5,"y":7},{"c":3,"sh":0,"x":1,"y":6},{"c":5,"sh":3,"x":1,"y":7},{"c":1,"sh":0,"x":5,"y":3},{"c":1,"sh":1,"x":0,"y":8},{"c":4,"sh":0,"x":2,"y":0,"ax":2},{"c":7,"sh":8,"x":2,"y":5},{"c":4,"sh":0,"x":1,"y":4},{"c":1,"sh":0,"x":6,"y":6,"ice":3},{"c":8,"sh":0,"x":3,"y":4},{"c":1,"sh":3,"x":4,"y":4},{"c":3,"sh":0,"x":4,"y":2},{"c":4,"sh":0,"x":0,"y":6},{"c":4,"sh":0,"x":2,"y":8},{"c":5,"sh":2,"x":3,"y":0},{"c":8,"sh":0,"x":6,"y":3},{"c":5,"sh":0,"x":0,"y":7},{"c":8,"sh":0,"x":5,"y":6},{"c":5,"sh":2,"x":0,"y":0}],"opt":31,"moves":34,"relocs":4},{"tier":"hard","w":7,"h":8,"walls":[12,36,22],"gates":[{"s":"T","p":2,"n":3,"c":4},{"s":"R","p":0,"n":1,"c":4},{"s":"B","p":2,"n":1,"c":6},{"s":"L","p":3,"n":3,"c":6},{"s":"B","p":4,"n":2,"c":1},{"s":"T","p":0,"n":1,"c":0},{"s":"R","p":7,"n":1,"c":0},{"s":"R","p":5,"n":1,"c":3},{"s":"L","p":0,"n":1,"c":8}],"blocks":[{"c":4,"sh":9,"x":2,"y":1},{"c":4,"sh":6,"x":5,"y":5,"ice":5},{"c":4,"sh":6,"x":4,"y":3},{"c":0,"sh":0,"x":0,"y":3},{"c":4,"sh":5,"x":0,"y":0},{"c":4,"sh":4,"x":6,"y":0},{"c":6,"sh":2,"x":5,"y":2},{"c":1,"sh":9,"x":0,"y":6},{"c":6,"sh":2,"x":6,"y":3},{"c":4,"sh":0,"x":0,"y":5},{"c":4,"sh":2,"x":3,"y":6,"ax":2},{"c":4,"sh":2,"x":2,"y":2},{"c":4,"sh":0,"x":4,"y":7},{"c":1,"sh":2,"x":4,"y":1},{"c":0,"sh":0,"x":4,"y":0},{"c":6,"sh":0,"x":2,"y":5},{"c":6,"sh":0,"x":0,"y":4},{"c":1,"sh":0,"x":6,"y":5},{"c":0,"sh":0,"x":2,"y":7,"ax":1},{"c":3,"sh":0,"x":0,"y":2},{"c":4,"sh":0,"x":0,"y":7},{"c":1,"sh":0,"x":1,"y":2},{"c":6,"sh":0,"x":5,"y":0},{"c":3,"sh":0,"x":2,"y":0},{"c":6,"sh":0,"x":3,"y":5},{"c":0,"sh":1,"x":5,"y":7,"ax":1},{"c":4,"sh":0,"x":2,"y":4},{"c":0,"sh":0,"x":4,"y":6}],"opt":32,"moves":35,"relocs":4},{"tier":"hard","w":6,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"L","p":2,"n":2,"c":4},{"s":"R","p":5,"n":2,"c":3},{"s":"T","p":4,"n":2,"c":1},{"s":"B","p":3,"n":3,"c":5}],"blocks":[{"c":4,"sh":9,"x":0,"y":6},{"c":5,"sh":7,"x":4,"y":6},{"c":3,"sh":6,"x":2,"y":0},{"c":1,"sh":9,"x":4,"y":3,"ice":5},{"c":3,"sh":3,"x":0,"y":3},{"c":3,"sh":11,"x":2,"y":6},{"c":6,"sh":6,"x":4,"y":4},{"c":1,"sh":2,"x":0,"y":1},{"c":5,"sh":1,"x":0,"y":0,"ice":2},{"c":4,"sh":5,"x":4,"y":1,"ice":5},{"c":6,"sh":1,"x":1,"y":4},{"c":3,"sh":1,"x":1,"y":2},{"c":4,"sh":6,"x":0,"y":4},{"c":3,"sh":0,"x":3,"y":5},{"c":1,"sh":0,"x":4,"y":0}],"opt":20,"moves":23,"relocs":5},{"tier":"hard","w":6,"h":8,"walls":[],"gates":[{"s":"T","p":1,"n":1,"c":7},{"s":"R","p":0,"n":3,"c":9},{"s":"L","p":3,"n":2,"c":3},{"s":"T","p":3,"n":3,"c":2},{"s":"B","p":2,"n":2,"c":8},{"s":"R","p":5,"n":3,"c":8}],"blocks":[{"c":3,"sh":1,"x":4,"y":2},{"c":9,"sh":3,"x":2,"y":4},{"c":8,"sh":8,"x":0,"y":5},{"c":8,"sh":8,"x":3,"y":0},{"c":9,"sh":11,"x":0,"y":1},{"c":3,"sh":7,"x":2,"y":6},{"c":2,"sh":2,"x":2,"y":2},{"c":9,"sh":7,"x":1,"y":5},{"c":8,"sh":0,"x":3,"y":2},{"c":3,"sh":0,"x":3,"y":3},{"c":9,"sh":0,"x":5,"y":3},{"c":3,"sh":7,"x":0,"y":3},{"c":3,"sh":1,"x":0,"y":7},{"c":2,"sh":7,"x":4,"y":0,"ax":2},{"c":2,"sh":5,"x":4,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":3,"sh":0,"x":4,"y":3,"ax":1}],"opt":22,"moves":25,"relocs":5},{"tier":"hard","w":7,"h":8,"walls":[30,11,33],"gates":[{"s":"T","p":4,"n":1,"c":2},{"s":"L","p":2,"n":2,"c":3},{"s":"R","p":5,"n":3,"c":9},{"s":"B","p":3,"n":2,"c":7},{"s":"L","p":5,"n":1,"c":7},{"s":"T","p":1,"n":1,"c":4},{"s":"R","p":0,"n":3,"c":6}],"blocks":[{"c":7,"sh":5,"x":5,"y":5},{"c":3,"sh":9,"x":5,"y":1},{"c":7,"sh":1,"x":2,"y":2},{"c":6,"sh":6,"x":1,"y":0},{"c":7,"sh":4,"x":0,"y":5,"ice":3},{"c":3,"sh":1,"x":4,"y":0},{"c":7,"sh":7,"x":3,"y":2,"ax":2},{"c":6,"sh":1,"x":0,"y":2},{"c":7,"sh":5,"x":3,"y":5},{"c":3,"sh":8,"x":0,"y":3},{"c":9,"sh":9,"x":1,"y":6},{"c":9,"sh":0,"x":2,"y":3},{"c":7,"sh":9,"x":2,"y":0},{"c":9,"sh":1,"x":3,"y":4},{"c":4,"sh":0,"x":5,"y":2},{"c":4,"sh":0,"x":0,"y":0},{"c":9,"sh":0,"x":1,"y":4},{"c":6,"sh":1,"x":4,"y":7},{"c":9,"sh":0,"x":0,"y":1},{"c":4,"sh":0,"x":1,"y":7},{"c":2,"sh":0,"x":3,"y":7}],"opt":26,"moves":29,"relocs":5},{"tier":"hard","w":7,"h":9,"walls":[25],"gates":[{"s":"B","p":4,"n":3,"c":0},{"s":"T","p":2,"n":3,"c":0},{"s":"L","p":6,"n":3,"c":9},{"s":"L","p":3,"n":1,"c":4},{"s":"R","p":2,"n":1,"c":1},{"s":"T","p":0,"n":1,"c":1},{"s":"R","p":6,"n":3,"c":3}],"blocks":[{"c":0,"sh":10,"x":2,"y":3},{"c":3,"sh":2,"x":6,"y":1,"ice":3},{"c":9,"sh":3,"x":4,"y":5},{"c":9,"sh":10,"x":0,"y":5},{"c":9,"sh":5,"x":1,"y":0},{"c":3,"sh":9,"x":0,"y":4},{"c":9,"sh":6,"x":5,"y":2},{"c":4,"sh":3,"x":0,"y":2},{"c":4,"sh":0,"x":5,"y":1},{"c":0,"sh":9,"x":5,"y":6},{"c":9,"sh":7,"x":1,"y":7},{"c":9,"sh":0,"x":4,"y":4},{"c":4,"sh":0,"x":6,"y":4},{"c":9,"sh":3,"x":4,"y":8},{"c":3,"sh":3,"x":4,"y":0},{"c":3,"sh":2,"x":3,"y":2},{"c":1,"sh":0,"x":3,"y":7},{"c":1,"sh":0,"x":3,"y":4},{"c":4,"sh":0,"x":4,"y":1},{"c":3,"sh":3,"x":2,"y":6,"ax":1},{"c":0,"sh":0,"x":4,"y":7,"ax":2},{"c":3,"sh":0,"x":5,"y":4,"ice":5},{"c":0,"sh":1,"x":0,"y":3}],"opt":28,"moves":31,"relocs":5},{"tier":"hard","w":7,"h":8,"walls":[18,44,10],"gates":[{"s":"B","p":0,"n":2,"c":0},{"s":"R","p":4,"n":2,"c":7},{"s":"L","p":5,"n":2,"c":6},{"s":"T","p":4,"n":3,"c":6},{"s":"R","p":2,"n":1,"c":5},{"s":"T","p":0,"n":1,"c":3},{"s":"B","p":3,"n":2,"c":3}],"blocks":[{"c":7,"sh":0,"x":6,"y":2},{"c":7,"sh":2,"x":5,"y":1},{"c":3,"sh":2,"x":6,"y":3},{"c":6,"sh":7,"x":0,"y":0},{"c":6,"sh":12,"x":1,"y":2},{"c":6,"sh":3,"x":4,"y":0,"ax":2},{"c":7,"sh":7,"x":3,"y":4,"ax":1},{"c":6,"sh":11,"x":2,"y":3},{"c":6,"sh":3,"x":1,"y":7},{"c":6,"sh":10,"x":5,"y":3},{"c":6,"sh":11,"x":3,"y":6},{"c":7,"sh":1,"x":0,"y":6},{"c":7,"sh":1,"x":1,"y":5},{"c":6,"sh":0,"x":0,"y":4},{"c":6,"sh":7,"x":5,"y":6},{"c":3,"sh":0,"x":2,"y":1},{"c":7,"sh":0,"x":0,"y":7},{"c":3,"sh":0,"x":4,"y":1},{"c":5,"sh":0,"x":1,"y":4,"ice":3}],"opt":26,"moves":29,"relocs":7},{"tier":"hard","w":6,"h":9,"walls":[],"gates":[{"s":"R","p":2,"n":3,"c":9},{"s":"B","p":0,"n":3,"c":3},{"s":"T","p":0,"n":2,"c":3},{"s":"T","p":3,"n":3,"c":1},{"s":"L","p":0,"n":3,"c":4},{"s":"R","p":6,"n":3,"c":6},{"s":"L","p":4,"n":2,"c":5}],"blocks":[{"c":9,"sh":10,"x":1,"y":4,"ice":3},{"c":9,"sh":12,"x":1,"y":2},{"c":9,"sh":6,"x":4,"y":0},{"c":5,"sh":0,"x":4,"y":6},{"c":4,"sh":7,"x":4,"y":7},{"c":6,"sh":2,"x":0,"y":2},{"c":6,"sh":3,"x":0,"y":8},{"c":6,"sh":11,"x":2,"y":5},{"c":1,"sh":0,"x":2,"y":7},{"c":6,"sh":8,"x":3,"y":7},{"c":1,"sh":4,"x":0,"y":5},{"c":1,"sh":0,"x":0,"y":0},{"c":6,"sh":9,"x":1,"y":0},{"c":1,"sh":0,"x":0,"y":4},{"c":4,"sh":1,"x":4,"y":2},{"c":1,"sh":1,"x":2,"y":3},{"c":1,"sh":1,"x":0,"y":1},{"c":6,"sh":4,"x":5,"y":4}],"opt":26,"moves":29,"relocs":8},{"tier":"hard","w":6,"h":8,"walls":[32],"gates":[{"s":"L","p":3,"n":3,"c":8},{"s":"R","p":0,"n":3,"c":3},{"s":"B","p":1,"n":2,"c":6},{"s":"T","p":4,"n":2,"c":6},{"s":"B","p":5,"n":1,"c":4},{"s":"T","p":1,"n":1,"c":4},{"s":"R","p":4,"n":3,"c":7},{"s":"L","p":7,"n":1,"c":0}],"blocks":[{"c":3,"sh":3,"x":0,"y":2},{"c":6,"sh":2,"x":1,"y":0},{"c":4,"sh":2,"x":3,"y":5},{"c":3,"sh":1,"x":3,"y":2},{"c":3,"sh":2,"x":3,"y":3},{"c":6,"sh":6,"x":4,"y":6},{"c":7,"sh":5,"x":0,"y":3},{"c":3,"sh":5,"x":4,"y":3},{"c":0,"sh":0,"x":0,"y":5},{"c":8,"sh":11,"x":2,"y":0},{"c":0,"sh":3,"x":0,"y":7},{"c":0,"sh":1,"x":4,"y":5},{"c":7,"sh":1,"x":0,"y":6,"ice":3},{"c":4,"sh":0,"x":2,"y":3},{"c":6,"sh":9,"x":4,"y":1},{"c":4,"sh":2,"x":0,"y":0},{"c":7,"sh":0,"x":1,"y":5}],"opt":27,"moves":30,"relocs":10},{"tier":"superhard","w":7,"h":9,"walls":[52,11],"gates":[{"s":"T","p":0,"n":2,"c":3},{"s":"L","p":3,"n":3,"c":7},{"s":"B","p":3,"n":2,"c":6},{"s":"T","p":5,"n":1,"c":2},{"s":"L","p":8,"n":1,"c":0},{"s":"B","p":0,"n":2,"c":1}],"blocks":[{"c":7,"sh":14,"x":0,"y":5},{"c":1,"sh":5,"x":1,"y":7},{"c":1,"sh":16,"x":0,"y":0},{"c":6,"sh":4,"x":3,"y":2},{"c":3,"sh":2,"x":3,"y":0},{"c":7,"sh":4,"x":2,"y":0},{"c":7,"sh":14,"x":4,"y":2},{"c":0,"sh":1,"x":3,"y":8,"ax":1},{"c":0,"sh":3,"x":4,"y":0},{"c":7,"sh":5,"x":5,"y":7},{"c":6,"sh":2,"x":2,"y":4,"ice":3},{"c":6,"sh":2,"x":1,"y":3},{"c":2,"sh":0,"x":4,"y":4,"ice":2},{"c":1,"sh":2,"x":6,"y":5},{"c":7,"sh":15,"x":3,"y":5},{"c":7,"sh":2,"x":0,"y":3,"ax":1},{"c":3,"sh":0,"x":0,"y":8},{"c":1,"sh":0,"x":5,"y":4}],"opt":24,"moves":25,"relocs":6,"time":186},{"tier":"superhard","w":7,"h":9,"walls":[17,25],"gates":[{"s":"B","p":4,"n":1,"c":7},{"s":"T","p":0,"n":3,"c":7},{"s":"T","p":4,"n":3,"c":2},{"s":"B","p":1,"n":2,"c":0},{"s":"R","p":1,"n":2,"c":1},{"s":"L","p":8,"n":1,"c":8},{"s":"R","p":5,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":5}],"blocks":[{"c":0,"sh":6,"x":0,"y":6,"ice":5},{"c":7,"sh":0,"x":4,"y":0},{"c":7,"sh":12,"x":0,"y":2},{"c":4,"sh":5,"x":4,"y":5},{"c":1,"sh":15,"x":4,"y":7},{"c":1,"sh":7,"x":2,"y":5},{"c":2,"sh":8,"x":2,"y":0,"ice":4},{"c":2,"sh":3,"x":1,"y":8},{"c":1,"sh":12,"x":4,"y":1},{"c":7,"sh":5,"x":0,"y":0,"ax":2},{"c":1,"sh":7,"x":1,"y":4},{"c":7,"sh":2,"x":0,"y":4},{"c":4,"sh":3,"x":4,"y":4},{"c":0,"sh":9,"x":5,"y":2},{"c":1,"sh":2,"x":1,"y":3},{"c":7,"sh":2,"x":6,"y":5},{"c":5,"sh":0,"x":6,"y":0},{"c":7,"sh":0,"x":1,"y":6},{"c":1,"sh":2,"x":3,"y":3}],"opt":25,"moves":26,"relocs":6,"time":193},{"tier":"superhard","w":7,"h":9,"walls":[29,16,46],"gates":[{"s":"R","p":7,"n":2,"c":9},{"s":"L","p":4,"n":1,"c":5},{"s":"L","p":0,"n":2,"c":5},{"s":"R","p":0,"n":1,"c":3},{"s":"T","p":4,"n":3,"c":0},{"s":"B","p":0,"n":3,"c":0},{"s":"B","p":4,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":6},{"s":"T","p":0,"n":3,"c":7}],"blocks":[{"c":0,"sh":12,"x":1,"y":0},{"c":9,"sh":1,"x":5,"y":6,"ice":4},{"c":3,"sh":3,"x":2,"y":3},{"c":5,"sh":7,"x":5,"y":4},{"c":4,"sh":7,"x":2,"y":5},{"c":5,"sh":5,"x":0,"y":6},{"c":7,"sh":5,"x":4,"y":7},{"c":0,"sh":8,"x":5,"y":1,"ax":2},{"c":0,"sh":2,"x":0,"y":1,"ax":2},{"c":9,"sh":0,"x":6,"y":2},{"c":7,"sh":5,"x":2,"y":7},{"c":7,"sh":1,"x":3,"y":2,"ice":3},{"c":0,"sh":0,"x":6,"y":8},{"c":7,"sh":7,"x":1,"y":4},{"c":0,"sh":2,"x":1,"y":2},{"c":7,"sh":0,"x":3,"y":4},{"c":0,"sh":2,"x":4,"y":4,"ice":4},{"c":9,"sh":2,"x":0,"y":4},{"c":7,"sh":1,"x":5,"y":3},{"c":5,"sh":3,"x":4,"y":0,"ax":1}],"opt":26,"moves":27,"relocs":6,"time":200},{"tier":"superhard","w":7,"h":9,"walls":[17,51,46,30],"gates":[{"s":"T","p":0,"n":1,"c":5},{"s":"T","p":5,"n":1,"c":0},{"s":"R","p":6,"n":2,"c":0},{"s":"L","p":3,"n":3,"c":3},{"s":"L","p":0,"n":1,"c":6},{"s":"B","p":3,"n":2,"c":8},{"s":"L","p":7,"n":2,"c":8},{"s":"B","p":0,"n":2,"c":7},{"s":"R","p":1,"n":2,"c":9},{"s":"T","p":2,"n":1,"c":1}],"blocks":[{"c":3,"sh":1,"x":3,"y":7},{"c":9,"sh":6,"x":0,"y":5},{"c":3,"sh":10,"x":0,"y":0},{"c":8,"sh":7,"x":4,"y":7,"ice":4},{"c":3,"sh":3,"x":1,"y":0},{"c":0,"sh":1,"x":5,"y":4},{"c":6,"sh":3,"x":4,"y":3},{"c":7,"sh":1,"x":1,"y":5},{"c":9,"sh":7,"x":4,"y":1},{"c":3,"sh":11,"x":4,"y":5},{"c":3,"sh":3,"x":2,"y":1,"ice":2},{"c":3,"sh":7,"x":2,"y":5,"ice":2},{"c":3,"sh":0,"x":6,"y":1},{"c":8,"sh":0,"x":6,"y":6},{"c":8,"sh":1,"x":0,"y":8},{"c":8,"sh":1,"x":4,"y":0},{"c":5,"sh":0,"x":6,"y":0},{"c":3,"sh":1,"x":1,"y":3},{"c":1,"sh":0,"x":1,"y":1},{"c":3,"sh":1,"x":0,"y":7},{"c":1,"sh":0,"x":6,"y":2},{"c":1,"sh":2,"x":3,"y":3},{"c":8,"sh":0,"x":4,"y":4}],"opt":29,"moves":30,"relocs":6,"time":221},{"tier":"superhard","w":7,"h":9,"walls":[18,32,30],"gates":[{"s":"T","p":4,"n":1,"c":0},{"s":"R","p":6,"n":1,"c":4},{"s":"T","p":0,"n":1,"c":4},{"s":"B","p":1,"n":3,"c":7},{"s":"L","p":0,"n":1,"c":5},{"s":"R","p":1,"n":1,"c":8},{"s":"L","p":4,"n":3,"c":1}],"blocks":[{"c":7,"sh":7,"x":4,"y":7},{"c":7,"sh":6,"x":0,"y":4},{"c":1,"sh":5,"x":2,"y":5,"ax":1},{"c":0,"sh":0,"x":6,"y":8},{"c":1,"sh":11,"x":2,"y":7},{"c":7,"sh":8,"x":0,"y":1},{"c":7,"sh":5,"x":5,"y":0,"ice":2},{"c":8,"sh":0,"x":0,"y":8},{"c":1,"sh":8,"x":4,"y":5},{"c":4,"sh":4,"x":6,"y":3},{"c":7,"sh":6,"x":0,"y":6},{"c":1,"sh":7,"x":4,"y":2},{"c":1,"sh":10,"x":2,"y":1},{"c":7,"sh":1,"x":1,"y":8,"ax":2},{"c":8,"sh":1,"x":1,"y":0},{"c":1,"sh":9,"x":0,"y":3},{"c":5,"sh":0,"x":5,"y":6},{"c":7,"sh":2,"x":3,"y":0,"ax":2},{"c":7,"sh":0,"x":3,"y":4,"ax":2},{"c":0,"sh":0,"x":1,"y":6},{"c":1,"sh":0,"x":0,"y":0},{"c":4,"sh":0,"x":6,"y":2},{"c":7,"sh":0,"x":4,"y":0}],"opt":29,"moves":30,"relocs":6,"time":221},{"tier":"superhard","w":7,"h":10,"walls":[22,51,10,59],"gates":[{"s":"T","p":6,"n":1,"c":8},{"s":"R","p":7,"n":1,"c":9},{"s":"T","p":0,"n":1,"c":9},{"s":"T","p":2,"n":2,"c":2},{"s":"L","p":7,"n":2,"c":2},{"s":"L","p":5,"n":1,"c":4},{"s":"R","p":0,"n":2,"c":0},{"s":"B","p":2,"n":3,"c":3},{"s":"R","p":3,"n":2,"c":7}],"blocks":[{"c":0,"sh":11,"x":3,"y":0},{"c":3,"sh":6,"x":2,"y":8},{"c":9,"sh":3,"x":3,"y":7,"ax":1},{"c":7,"sh":2,"x":5,"y":1},{"c":7,"sh":14,"x":4,"y":5,"ice":5},{"c":3,"sh":7,"x":0,"y":7},{"c":2,"sh":0,"x":1,"y":5},{"c":7,"sh":5,"x":5,"y":8},{"c":8,"sh":0,"x":6,"y":0},{"c":0,"sh":1,"x":0,"y":6},{"c":8,"sh":4,"x":2,"y":3},{"c":0,"sh":6,"x":3,"y":3},{"c":9,"sh":4,"x":2,"y":0},{"c":0,"sh":6,"x":0,"y":3},{"c":7,"sh":1,"x":2,"y":6},{"c":0,"sh":1,"x":0,"y":9},{"c":3,"sh":6,"x":0,"y":0},{"c":7,"sh":0,"x":6,"y":1},{"c":7,"sh":7,"x":5,"y":2},{"c":9,"sh":2,"x":4,"y":8},{"c":3,"sh":1,"x":5,"y":4},{"c":3,"sh":0,"x":4,"y":3},{"c":3,"sh":0,"x":4,"y":6,"ax":2},{"c":0,"sh":0,"x":6,"y":5},{"c":2,"sh":0,"x":3,"y":5}],"opt":31,"moves":32,"relocs":6,"time":235},{"tier":"superhard","w":7,"h":10,"walls":[30],"gates":[{"s":"B","p":2,"n":2,"c":5},{"s":"R","p":1,"n":1,"c":8},{"s":"T","p":2,"n":1,"c":1},{"s":"R","p":4,"n":3,"c":6},{"s":"B","p":5,"n":2,"c":7},{"s":"L","p":9,"n":1,"c":7},{"s":"R","p":9,"n":1,"c":4}],"blocks":[{"c":1,"sh":2,"x":4,"y":4},{"c":6,"sh":6,"x":2,"y":8},{"c":5,"sh":7,"x":4,"y":8},{"c":5,"sh":9,"x":3,"y":6},{"c":5,"sh":5,"x":0,"y":4},{"c":7,"sh":2,"x":6,"y":5},{"c":7,"sh":3,"x":2,"y":3,"ice":3},{"c":7,"sh":4,"x":0,"y":1},{"c":6,"sh":7,"x":5,"y":3},{"c":7,"sh":7,"x":1,"y":1},{"c":5,"sh":7,"x":1,"y":6},{"c":7,"sh":4,"x":5,"y":5},{"c":8,"sh":0,"x":5,"y":1},{"c":7,"sh":2,"x":3,"y":4},{"c":6,"sh":2,"x":6,"y":7},{"c":5,"sh":0,"x":2,"y":0},{"c":6,"sh":0,"x":0,"y":7},{"c":4,"sh":0,"x":1,"y":3},{"c":1,"sh":2,"x":1,"y":8},{"c":6,"sh":7,"x":5,"y":1},{"c":6,"sh":2,"x":4,"y":1},{"c":4,"sh":3,"x":3,"y":0},{"c":5,"sh":0,"x":1,"y":1},{"c":4,"sh":1,"x":0,"y":6},{"c":1,"sh":2,"x":0,"y":8},{"c":1,"sh":2,"x":3,"y":1}],"opt":32,"moves":33,"relocs":6,"time":242},{"tier":"superhard","w":7,"h":10,"walls":[9,61],"gates":[{"s":"T","p":3,"n":3,"c":3},{"s":"B","p":4,"n":3,"c":0},{"s":"L","p":8,"n":1,"c":6},{"s":"R","p":6,"n":3,"c":9},{"s":"T","p":0,"n":1,"c":7},{"s":"R","p":3,"n":2,"c":8}],"blocks":[{"c":3,"sh":5,"x":2,"y":8},{"c":3,"sh":9,"x":0,"y":3},{"c":0,"sh":2,"x":3,"y":2},{"c":3,"sh":2,"x":4,"y":3},{"c":3,"sh":12,"x":1,"y":5},{"c":0,"sh":7,"x":5,"y":8},{"c":3,"sh":10,"x":5,"y":5},{"c":7,"sh":0,"x":4,"y":8,"ice":4},{"c":9,"sh":14,"x":0,"y":1},{"c":9,"sh":2,"x":1,"y":8},{"c":6,"sh":1,"x":2,"y":6},{"c":3,"sh":9,"x":3,"y":1,"ax":2,"ice":3},{"c":9,"sh":7,"x":5,"y":2},{"c":3,"sh":8,"x":5,"y":1},{"c":9,"sh":4,"x":0,"y":4},{"c":3,"sh":1,"x":1,"y":0},{"c":9,"sh":0,"x":0,"y":7,"ax":1},{"c":3,"sh":1,"x":2,"y":4},{"c":9,"sh":0,"x":0,"y":8},{"c":7,"sh":2,"x":6,"y":4},{"c":0,"sh":0,"x":5,"y":0},{"c":6,"sh":0,"x":3,"y":7},{"c":3,"sh":0,"x":4,"y":9},{"c":9,"sh":2,"x":4,"y":6,"ax":1},{"c":8,"sh":0,"x":0,"y":0},{"c":8,"sh":0,"x":1,"y":7,"ice":4},{"c":9,"sh":0,"x":0,"y":2}],"opt":33,"moves":34,"relocs":6,"time":249},{"tier":"superhard","w":7,"h":10,"walls":[11,30],"gates":[{"s":"T","p":4,"n":3,"c":4},{"s":"B","p":3,"n":3,"c":4},{"s":"R","p":6,"n":2,"c":8},{"s":"L","p":2,"n":1,"c":1},{"s":"T","p":0,"n":2,"c":1},{"s":"R","p":0,"n":3,"c":9},{"s":"R","p":9,"n":1,"c":9},{"s":"L","p":4,"n":3,"c":2},{"s":"R","p":4,"n":1,"c":0},{"s":"L","p":9,"n":1,"c":3},{"s":"B","p":1,"n":1,"c":6},{"s":"L","p":0,"n":1,"c":6}],"blocks":[{"c":2,"sh":10,"x":4,"y":2},{"c":4,"sh":13,"x":4,"y":7,"ax":2},{"c":4,"sh":2,"x":0,"y":3},{"c":8,"sh":6,"x":3,"y":5},{"c":4,"sh":6,"x":2,"y":7,"ice":4},{"c":9,"sh":4,"x":2,"y":0},{"c":8,"sh":2,"x":6,"y":3},{"c":6,"sh":2,"x":2,"y":5,"ice":2},{"c":1,"sh":3,"x":4,"y":5},{"c":4,"sh":9,"x":0,"y":6},{"c":4,"sh":6,"x":1,"y":8},{"c":4,"sh":4,"x":5,"y":1,"ax":2},{"c":8,"sh":2,"x":6,"y":8},{"c":8,"sh":7,"x":2,"y":2},{"c":8,"sh":2,"x":0,"y":8},{"c":2,"sh":5,"x":0,"y":0},{"c":2,"sh":9,"x":3,"y":7,"ice":5},{"c":0,"sh":0,"x":1,"y":3},{"c":6,"sh":0,"x":6,"y":1},{"c":4,"sh":1,"x":0,"y":5,"ice":2},{"c":4,"sh":0,"x":3,"y":1,"ax":2},{"c":3,"sh":0,"x":1,"y":4},{"c":0,"sh":0,"x":1,"y":2},{"c":3,"sh":0,"x":6,"y":0},{"c":3,"sh":0,"x":0,"y":2},{"c":0,"sh":0,"x":3,"y":4},{"c":9,"sh":0,"x":0,"y":7}],"opt":33,"moves":34,"relocs":6,"time":249},{"tier":"superhard","w":7,"h":10,"walls":[47,43,51],"gates":[{"s":"L","p":2,"n":3,"c":5},{"s":"R","p":2,"n":1,"c":2},{"s":"R","p":9,"n":1,"c":2},{"s":"B","p":2,"n":3,"c":1},{"s":"T","p":0,"n":3,"c":1},{"s":"R","p":6,"n":1,"c":8},{"s":"T","p":5,"n":2,"c":9},{"s":"L","p":9,"n":1,"c":7}],"blocks":[{"c":9,"sh":10,"x":3,"y":7},{"c":9,"sh":16,"x":5,"y":2,"ax":2},{"c":1,"sh":5,"x":0,"y":8},{"c":5,"sh":16,"x":1,"y":1},{"c":1,"sh":12,"x":3,"y":1},{"c":5,"sh":0,"x":3,"y":4},{"c":9,"sh":8,"x":1,"y":4},{"c":1,"sh":0,"x":0,"y":6,"ax":2},{"c":1,"sh":13,"x":3,"y":3},{"c":5,"sh":4,"x":4,"y":6},{"c":9,"sh":1,"x":1,"y":0},{"c":9,"sh":0,"x":6,"y":9},{"c":9,"sh":4,"x":6,"y":6},{"c":9,"sh":2,"x":6,"y":0,"ax":2},{"c":1,"sh":4,"x":0,"y":0,"ax":2},{"c":1,"sh":0,"x":5,"y":5},{"c":1,"sh":0,"x":4,"y":0,"ice":2},{"c":5,"sh":0,"x":2,"y":5,"ice":5},{"c":1,"sh":2,"x":0,"y":4},{"c":2,"sh":0,"x":5,"y":8},{"c":1,"sh":0,"x":4,"y":2},{"c":9,"sh":0,"x":3,"y":3},{"c":2,"sh":0,"x":5,"y":9},{"c":7,"sh":0,"x":0,"y":3},{"c":7,"sh":0,"x":6,"y":5},{"c":2,"sh":0,"x":3,"y":0},{"c":2,"sh":0,"x":2,"y":6},{"c":2,"sh":0,"x":3,"y":6,"ice":5}],"opt":34,"moves":35,"relocs":6,"time":256},{"tier":"superhard","w":7,"h":9,"walls":[36,51,38,32],"gates":[{"s":"T","p":2,"n":1,"c":2},{"s":"B","p":5,"n":2,"c":2},{"s":"R","p":0,"n":2,"c":5},{"s":"L","p":2,"n":1,"c":5},{"s":"R","p":7,"n":2,"c":0},{"s":"T","p":5,"n":2,"c":7},{"s":"B","p":0,"n":2,"c":8},{"s":"R","p":3,"n":1,"c":4},{"s":"L","p":5,"n":2,"c":3}],"blocks":[{"c":2,"sh":4,"x":0,"y":3},{"c":2,"sh":6,"x":1,"y":0},{"c":4,"sh":0,"x":4,"y":7},{"c":7,"sh":5,"x":5,"y":4},{"c":2,"sh":1,"x":1,"y":2},{"c":2,"sh":2,"x":1,"y":3},{"c":7,"sh":13,"x":3,"y":1},{"c":5,"sh":0,"x":3,"y":0},{"c":7,"sh":6,"x":5,"y":6,"ax":2},{"c":4,"sh":0,"x":3,"y":4},{"c":0,"sh":0,"x":6,"y":1},{"c":7,"sh":8,"x":3,"y":6},{"c":7,"sh":10,"x":5,"y":1,"ax":2},{"c":0,"sh":0,"x":4,"y":5,"ice":4},{"c":2,"sh":1,"x":3,"y":8},{"c":2,"sh":0,"x":5,"y":0},{"c":8,"sh":2,"x":0,"y":1},{"c":8,"sh":0,"x":0,"y":0,"ax":2},{"c":5,"sh":0,"x":6,"y":2},{"c":5,"sh":0,"x":1,"y":6,"ice":5},{"c":2,"sh":0,"x":0,"y":6},{"c":2,"sh":0,"x":1,"y":7},{"c":2,"sh":2,"x":0,"y":7,"ice":2},{"c":0,"sh":0,"x":2,"y":6},{"c":4,"sh":1,"x":5,"y":8},{"c":3,"sh":2,"x":3,"y":1,"ice":2},{"c":2,"sh":0,"x":2,"y":4},{"c":5,"sh":0,"x":2,"y":0},{"c":2,"sh":0,"x":2,"y":5,"ax":2}],"opt":35,"moves":36,"relocs":6,"time":263},{"tier":"superhard","w":7,"h":9,"walls":[25,31,39,8],"gates":[{"s":"R","p":3,"n":2,"c":2},{"s":"L","p":0,"n":3,"c":0},{"s":"B","p":0,"n":2,"c":0},{"s":"L","p":5,"n":3,"c":4},{"s":"B","p":4,"n":3,"c":5},{"s":"T","p":2,"n":2,"c":3},{"s":"R","p":6,"n":2,"c":3},{"s":"R","p":0,"n":1,"c":6},{"s":"T","p":5,"n":2,"c":7}],"blocks":[{"c":0,"sh":2,"x":0,"y":6},{"c":0,"sh":16,"x":0,"y":3},{"c":2,"sh":8,"x":5,"y":2},{"c":3,"sh":2,"x":6,"y":7},{"c":7,"sh":2,"x":2,"y":1},{"c":5,"sh":4,"x":5,"y":4},{"c":6,"sh":1,"x":0,"y":0,"ax":1},{"c":5,"sh":0,"x":4,"y":6},{"c":7,"sh":1,"x":3,"y":8},{"c":0,"sh":9,"x":3,"y":0},{"c":3,"sh":8,"x":2,"y":3},{"c":5,"sh":13,"x":1,"y":5},{"c":5,"sh":3,"x":3,"y":7},{"c":0,"sh":2,"x":6,"y":0},{"c":5,"sh":4,"x":6,"y":4},{"c":4,"sh":0,"x":1,"y":6,"ax":1,"ice":2},{"c":7,"sh":0,"x":1,"y":8},{"c":3,"sh":2,"x":5,"y":0},{"c":2,"sh":0,"x":0,"y":8},{"c":5,"sh":0,"x":1,"y":2},{"c":2,"sh":6,"x":3,"y":1},{"c":7,"sh":0,"x":0,"y":2,"ice":2},{"c":7,"sh":2,"x":3,"y":5},{"c":3,"sh":0,"x":6,"y":3}],"opt":31,"moves":32,"relocs":7,"time":228},{"tier":"superhard","w":7,"h":10,"walls":[26,11],"gates":[{"s":"R","p":7,"n":3,"c":0},{"s":"T","p":2,"n":1,"c":0},{"s":"B","p":2,"n":3,"c":5},{"s":"L","p":5,"n":1,"c":2},{"s":"R","p":3,"n":2,"c":6},{"s":"R","p":1,"n":1,"c":8},{"s":"T","p":4,"n":1,"c":1}],"blocks":[{"c":0,"sh":15,"x":1,"y":8},{"c":5,"sh":7,"x":0,"y":1,"ice":3},{"c":0,"sh":6,"x":4,"y":3},{"c":0,"sh":1,"x":4,"y":7,"ax":1},{"c":5,"sh":10,"x":2,"y":0},{"c":0,"sh":14,"x":0,"y":4},{"c":5,"sh":1,"x":4,"y":9},{"c":5,"sh":4,"x":6,"y":6},{"c":5,"sh":1,"x":4,"y":6},{"c":0,"sh":0,"x":5,"y":2},{"c":5,"sh":1,"x":2,"y":6},{"c":2,"sh":1,"x":5,"y":5},{"c":2,"sh":0,"x":3,"y":0,"ice":4},{"c":5,"sh":2,"x":6,"y":3},{"c":6,"sh":1,"x":0,"y":3},{"c":0,"sh":4,"x":0,"y":5},{"c":0,"sh":2,"x":0,"y":0},{"c":5,"sh":0,"x":1,"y":0},{"c":5,"sh":9,"x":2,"y":4,"ax":2},{"c":5,"sh":3,"x":4,"y":0},{"c":6,"sh":2,"x":0,"y":8},{"c":0,"sh":0,"x":2,"y":7,"ice":3},{"c":2,"sh":0,"x":2,"y":3},{"c":5,"sh":0,"x":5,"y":1},{"c":1,"sh":0,"x":1,"y":6,"ice":5},{"c":0,"sh":0,"x":6,"y":2},{"c":2,"sh":0,"x":6,"y":1}],"opt":34,"moves":35,"relocs":7,"time":249},{"tier":"superhard","w":7,"h":9,"walls":[30],"gates":[{"s":"T","p":4,"n":1,"c":6},{"s":"R","p":2,"n":3,"c":4},{"s":"B","p":3,"n":3,"c":5},{"s":"R","p":6,"n":1,"c":2},{"s":"R","p":8,"n":1,"c":2},{"s":"L","p":1,"n":3,"c":1},{"s":"L","p":6,"n":3,"c":9},{"s":"T","p":1,"n":2,"c":9},{"s":"T","p":6,"n":1,"c":8}],"blocks":[{"c":4,"sh":1,"x":1,"y":3},{"c":4,"sh":0,"x":3,"y":8,"ice":4},{"c":5,"sh":5,"x":5,"y":3,"ice":2},{"c":9,"sh":6,"x":0,"y":3},{"c":8,"sh":2,"x":5,"y":6},{"c":4,"sh":1,"x":3,"y":6},{"c":2,"sh":3,"x":2,"y":2},{"c":5,"sh":5,"x":2,"y":0},{"c":1,"sh":6,"x":0,"y":0},{"c":1,"sh":0,"x":4,"y":5},{"c":4,"sh":8,"x":0,"y":6},{"c":4,"sh":14,"x":4,"y":1},{"c":4,"sh":6,"x":1,"y":7},{"c":2,"sh":1,"x":4,"y":8},{"c":9,"sh":1,"x":4,"y":0},{"c":8,"sh":2,"x":2,"y":6},{"c":5,"sh":0,"x":3,"y":7},{"c":9,"sh":0,"x":1,"y":0},{"c":4,"sh":1,"x":3,"y":4,"ice":2},{"c":6,"sh":0,"x":1,"y":5},{"c":4,"sh":2,"x":6,"y":6,"ice":3},{"c":4,"sh":0,"x":6,"y":1},{"c":5,"sh":0,"x":0,"y":2},{"c":1,"sh":1,"x":2,"y":5},{"c":8,"sh":0,"x":3,"y":3},{"c":6,"sh":0,"x":4,"y":7},{"c":5,"sh":0,"x":6,"y":8}],"opt":34,"moves":35,"relocs":7,"time":249},{"tier":"superhard","w":7,"h":10,"walls":[47,43],"gates":[{"s":"R","p":9,"n":1,"c":6},{"s":"R","p":6,"n":1,"c":6},{"s":"L","p":7,"n":3,"c":1},{"s":"B","p":3,"n":3,"c":1},{"s":"T","p":4,"n":3,"c":2},{"s":"R","p":1,"n":3,"c":5},{"s":"L","p":2,"n":3,"c":3},{"s":"B","p":0,"n":1,"c":3},{"s":"T","p":1,"n":2,"c":4}],"blocks":[{"c":4,"sh":5,"x":4,"y":4},{"c":2,"sh":16,"x":3,"y":1},{"c":2,"sh":2,"x":0,"y":3},{"c":3,"sh":11,"x":1,"y":5},{"c":3,"sh":5,"x":2,"y":8},{"c":1,"sh":5,"x":0,"y":0},{"c":4,"sh":1,"x":5,"y":3},{"c":4,"sh":2,"x":5,"y":8},{"c":5,"sh":9,"x":1,"y":3},{"c":5,"sh":9,"x":3,"y":7},{"c":2,"sh":2,"x":6,"y":1},{"c":3,"sh":9,"x":0,"y":8},{"c":5,"sh":0,"x":5,"y":1,"ax":1},{"c":4,"sh":2,"x":0,"y":6},{"c":1,"sh":0,"x":5,"y":7,"ax":1},{"c":3,"sh":0,"x":2,"y":2},{"c":6,"sh":0,"x":1,"y":4},{"c":2,"sh":8,"x":2,"y":0},{"c":2,"sh":4,"x":6,"y":6},{"c":5,"sh":0,"x":0,"y":5},{"c":2,"sh":2,"x":6,"y":4,"ax":2},{"c":1,"sh":0,"x":5,"y":2},{"c":2,"sh":3,"x":4,"y":0,"ax":2},{"c":1,"sh":0,"x":4,"y":9,"ax":1},{"c":1,"sh":0,"x":3,"y":4},{"c":1,"sh":0,"x":0,"y":2},{"c":4,"sh":0,"x":0,"y":9,"ice":2}],"opt":34,"moves":35,"relocs":7,"time":249},{"tier":"superhard","w":7,"h":9,"walls":[51],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"T","p":1,"n":1,"c":5},{"s":"L","p":1,"n":1,"c":3},{"s":"B","p":1,"n":1,"c":3},{"s":"L","p":5,"n":1,"c":9},{"s":"T","p":5,"n":2,"c":4},{"s":"R","p":6,"n":2,"c":2},{"s":"B","p":3,"n":1,"c":7}],"blocks":[{"c":9,"sh":1,"x":4,"y":2},{"c":4,"sh":10,"x":1,"y":3},{"c":2,"sh":11,"x":3,"y":3},{"c":6,"sh":1,"x":2,"y":8},{"c":6,"sh":16,"x":0,"y":6},{"c":6,"sh":3,"x":1,"y":2},{"c":4,"sh":9,"x":4,"y":6},{"c":6,"sh":6,"x":5,"y":4},{"c":4,"sh":2,"x":4,"y":0},{"c":6,"sh":8,"x":0,"y":0},{"c":5,"sh":4,"x":0,"y":3},{"c":4,"sh":4,"x":6,"y":6},{"c":5,"sh":2,"x":6,"y":1},{"c":4,"sh":6,"x":2,"y":0},{"c":2,"sh":1,"x":3,"y":5},{"c":3,"sh":0,"x":5,"y":8},{"c":5,"sh":2,"x":2,"y":3,"ice":4},{"c":6,"sh":2,"x":6,"y":3},{"c":2,"sh":0,"x":6,"y":0},{"c":9,"sh":0,"x":5,"y":0},{"c":6,"sh":0,"x":3,"y":7},{"c":6,"sh":0,"x":3,"y":6}],"opt":32,"moves":33,"relocs":10,"time":214},{"tier":"superhard","w":7,"h":9,"walls":[8],"gates":[{"s":"B","p":4,"n":3,"c":4},{"s":"L","p":7,"n":1,"c":3},{"s":"L","p":4,"n":2,"c":6},{"s":"T","p":1,"n":3,"c":6},{"s":"B","p":0,"n":2,"c":1},{"s":"R","p":3,"n":2,"c":0},{"s":"R","p":6,"n":3,"c":7},{"s":"R","p":0,"n":2,"c":2}],"blocks":[{"c":0,"sh":1,"x":0,"y":7},{"c":6,"sh":8,"x":5,"y":6},{"c":6,"sh":14,"x":2,"y":7},{"c":6,"sh":7,"x":0,"y":5},{"c":6,"sh":9,"x":3,"y":6},{"c":7,"sh":11,"x":4,"y":2},{"c":7,"sh":12,"x":1,"y":2},{"c":3,"sh":3,"x":2,"y":5,"ice":3},{"c":7,"sh":1,"x":5,"y":5},{"c":0,"sh":3,"x":4,"y":4},{"c":4,"sh":7,"x":4,"y":0,"ax":2},{"c":7,"sh":14,"x":1,"y":0},{"c":1,"sh":0,"x":4,"y":0},{"c":6,"sh":3,"x":0,"y":4,"ice":4},{"c":4,"sh":9,"x":2,"y":3},{"c":6,"sh":0,"x":1,"y":8},{"c":0,"sh":0,"x":6,"y":8},{"c":0,"sh":0,"x":4,"y":3,"ax":1},{"c":7,"sh":0,"x":5,"y":8,"ice":4,"ax":1},{"c":6,"sh":0,"x":0,"y":5},{"c":4,"sh":0,"x":6,"y":1},{"c":6,"sh":0,"x":3,"y":0},{"c":1,"sh":0,"x":0,"y":3}],"opt":33,"moves":34,"relocs":10,"time":221},{"tier":"superhard","w":7,"h":10,"walls":[43,26],"gates":[{"s":"T","p":5,"n":1,"c":0},{"s":"B","p":4,"n":3,"c":2},{"s":"B","p":1,"n":2,"c":8},{"s":"L","p":8,"n":2,"c":4},{"s":"R","p":4,"n":3,"c":6},{"s":"R","p":1,"n":1,"c":3}],"blocks":[{"c":6,"sh":16,"x":1,"y":7},{"c":2,"sh":10,"x":0,"y":3},{"c":2,"sh":3,"x":3,"y":6},{"c":2,"sh":5,"x":1,"y":2,"ice":3},{"c":6,"sh":2,"x":3,"y":8},{"c":3,"sh":3,"x":1,"y":0},{"c":6,"sh":7,"x":4,"y":4},{"c":3,"sh":0,"x":4,"y":0},{"c":2,"sh":13,"x":5,"y":7,"ax":2,"ice":3},{"c":2,"sh":9,"x":4,"y":7,"ax":2},{"c":4,"sh":3,"x":1,"y":1,"ice":5},{"c":4,"sh":7,"x":2,"y":4},{"c":6,"sh":1,"x":4,"y":1},{"c":8,"sh":2,"x":0,"y":6},{"c":2,"sh":0,"x":3,"y":7},{"c":6,"sh":11,"x":3,"y":2},{"c":6,"sh":0,"x":6,"y":6},{"c":0,"sh":0,"x":5,"y":0},{"c":6,"sh":4,"x":6,"y":0},{"c":6,"sh":0,"x":4,"y":9},{"c":6,"sh":0,"x":4,"y":4},{"c":0,"sh":4,"x":6,"y":3},{"c":8,"sh":1,"x":1,"y":4}],"opt":33,"moves":34,"relocs":10,"time":221},{"tier":"superhard","w":7,"h":10,"walls":[58,52,36],"gates":[{"s":"L","p":0,"n":3,"c":2},{"s":"T","p":4,"n":3,"c":2},{"s":"L","p":9,"n":1,"c":4},{"s":"B","p":2,"n":1,"c":9},{"s":"L","p":6,"n":1,"c":6},{"s":"R","p":0,"n":2,"c":5},{"s":"T","p":0,"n":3,"c":7},{"s":"R","p":7,"n":1,"c":8},{"s":"R","p":9,"n":1,"c":8}],"blocks":[{"c":2,"sh":10,"x":1,"y":1},{"c":7,"sh":7,"x":0,"y":8},{"c":5,"sh":15,"x":3,"y":4},{"c":2,"sh":3,"x":0,"y":4},{"c":5,"sh":1,"x":4,"y":1},{"c":5,"sh":5,"x":4,"y":8,"ice":4},{"c":2,"sh":8,"x":0,"y":7},{"c":7,"sh":2,"x":2,"y":6},{"c":5,"sh":8,"x":4,"y":2},{"c":5,"sh":2,"x":0,"y":5},{"c":5,"sh":1,"x":5,"y":6},{"c":5,"sh":3,"x":4,"y":7},{"c":7,"sh":8,"x":0,"y":0},{"c":2,"sh":13,"x":5,"y":1},{"c":2,"sh":0,"x":2,"y":1},{"c":8,"sh":0,"x":4,"y":6},{"c":5,"sh":11,"x":2,"y":0,"ax":1,"ice":3},{"c":4,"sh":1,"x":2,"y":2},{"c":4,"sh":0,"x":2,"y":9},{"c":8,"sh":0,"x":2,"y":5},{"c":7,"sh":0,"x":3,"y":3},{"c":7,"sh":0,"x":6,"y":9},{"c":2,"sh":0,"x":6,"y":4},{"c":6,"sh":0,"x":6,"y":5},{"c":5,"sh":0,"x":0,"y":2,"ice":2},{"c":5,"sh":0,"x":0,"y":3},{"c":2,"sh":0,"x":5,"y":0}],"opt":37,"moves":38,"relocs":10,"time":249},{"tier":"superhard","w":7,"h":9,"walls":[37,31],"gates":[{"s":"L","p":3,"n":2,"c":3},{"s":"R","p":6,"n":1,"c":3},{"s":"L","p":0,"n":1,"c":5},{"s":"T","p":5,"n":2,"c":7},{"s":"B","p":1,"n":3,"c":7},{"s":"R","p":8,"n":1,"c":1},{"s":"R","p":2,"n":3,"c":2},{"s":"T","p":2,"n":2,"c":2},{"s":"L","p":6,"n":3,"c":6}],"blocks":[{"c":7,"sh":5,"x":4,"y":4},{"c":2,"sh":8,"x":5,"y":6},{"c":7,"sh":13,"x":3,"y":0},{"c":7,"sh":8,"x":1,"y":7,"ax":2},{"c":7,"sh":4,"x":5,"y":1,"ax":2},{"c":2,"sh":11,"x":0,"y":3},{"c":7,"sh":10,"x":0,"y":0},{"c":5,"sh":0,"x":3,"y":3},{"c":7,"sh":16,"x":3,"y":6},{"c":2,"sh":7,"x":0,"y":5,"ice":4},{"c":6,"sh":1,"x":1,"y":0},{"c":7,"sh":2,"x":0,"y":4},{"c":5,"sh":0,"x":6,"y":1,"ice":5},{"c":2,"sh":7,"x":5,"y":7},{"c":7,"sh":2,"x":2,"y":1},{"c":7,"sh":2,"x":6,"y":3},{"c":2,"sh":2,"x":3,"y":0,"ice":4,"ax":2},{"c":2,"sh":0,"x":6,"y":0},{"c":7,"sh":0,"x":1,"y":1,"ice":4},{"c":2,"sh":0,"x":2,"y":8},{"c":5,"sh":0,"x":3,"y":5},{"c":6,"sh":0,"x":2,"y":6,"ax":1},{"c":3,"sh":0,"x":5,"y":0}],"opt":34,"moves":35,"relocs":11,"time":221}];</script>
+<script id="src-gen">
+// ColorShred level generator, shared by tools/generate.js (Node) and the in-game Unstoppable mode (Web Worker).
+(function (root) {
+'use strict';
+const CS = root.CS || (typeof require !== 'undefined' ? require('./engine.js') : null);
+let seed = 1234567, capOverride = 0, tierName = '';
+function setSeed(s) { seed = s | 0; }
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const CAP = () => capOverride || (tierName === 'superhard' ? 9000 : 5000);
+const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+const pick = arr => arr[Math.floor(rnd() * arr.length)];
+
+const TIERS = {
+  easy:      { w: [5, 6], h: [6, 7], colors: [3, 4], walls: [0, 1], shapes: [0,1,2,3,4,5], axisP: 0, iceP: 0, fill: [0.6, 0.75], target: [0, 1], tries: 20 },
+  medium:    { count: 20, w: [6, 6], h: [7, 8], colors: [4, 5], walls: [0, 2], shapes: [0,1,2,3,4,5,6,7,8,9], axisP: 0.15, iceP: 0.0, fill: [0.78, 0.86], target: [2, 4], tries: 120 },
+  hard:      { count: 20, w: [6, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.25, iceP: 0.08, fill: [0.82, 0.9], target: [4, 5], tries: 160 },
+  superhard: { count: 20, w: [7, 7], h: [9, 10], colors: [6, 8], walls: [1, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.3, iceP: 0.1, fill: [0.86, 0.93], target: [6, 99], tries: 200 },
+};
+
+function soloOk(lvl, b) {
+  const l = { ...lvl, blocks: [b] }; const ctx = CS.makeCtx(l);
+  const pos = [b.y * l.w + b.x]; const occ = CS.occupancy(ctx, pos);
+  return CS.reachable(ctx, occ, pos, 0).some(a => CS.canExitFrom(ctx, 0, a, occ));
+}
+function randomLevel(T) {
+  const w = ri(...T.w), h = ri(...T.h);
+  const nColors = ri(...T.colors);
+  const colors = []; const all = [0,1,2,3,4,5,6,7,8,9];
+  while (colors.length < nColors) { const c = pick(all); if (!colors.includes(c)) colors.push(c); }
+  // gates
+  const gates = []; const used = { L: [], R: [], T: [], B: [] };
+  const sideLen = s => (s === 'L' || s === 'R') ? h : w;
+  for (const c of colors) {
+    const nG = rnd() < 0.25 ? 2 : 1;
+    for (let k = 0; k < nG; k++) {
+      for (let t = 0; t < 30; t++) {
+        const s = pick(['L', 'R', 'T', 'B']); const n = ri(1, 3); const L = sideLen(s);
+        const p = ri(0, L - n);
+        if (used[s].some(([a, b]) => p < b + 1 && a < p + n + 1)) continue; // keep 1-cell spacing
+        used[s].push([p, p + n]); gates.push({ s, p, n, c }); break;
+      }
+    }
+  }
+  const walls = [];
+  const nW = ri(...T.walls);
+  for (let k = 0; k < nW; k++) { const x = ri(1, w - 2), y = ri(1, h - 2); const i = y * w + x; if (!walls.includes(i)) walls.push(i); }
+  const lvl = { w, h, walls, gates, blocks: [] };
+  // blocks
+  const occ = new Int8Array(w * h); for (const i of walls) occ[i] = 1;
+  const free = w * h - walls.length; const target = Math.floor(free * (T.fill[0] + rnd() * (T.fill[1] - T.fill[0])));
+  let filled = 0;
+  for (let t = 0; t < 3000 && filled < target; t++) {
+    const sh = pick(T.shapes); const si = CS.shapeInfo[sh];
+    const x = ri(0, w - si.w), y = ri(0, h - si.h);
+    if (si.cells.some(([dx, dy]) => occ[(y + dy) * w + x + dx])) continue;
+    let ax = 0; if (rnd() < T.axisP) ax = rnd() < 0.5 ? 1 : 2;
+    // colors whose gates could accept this shape+axis
+    const okC = colors.filter(c => gates.some(g => g.c === c && (
+      ((g.s === 'L' || g.s === 'R') && ax !== 2 && g.n >= si.h) || ((g.s === 'T' || g.s === 'B') && ax !== 1 && g.n >= si.w))));
+    if (!okC.length) continue;
+    const c = pick(okC);
+    const b = { c, sh, x, y };
+    if (ax) b.ax = ax;
+    if (!soloOk(lvl, b)) continue;
+    if (rnd() < T.iceP) b.ice = ri(2, 5);
+    for (const [dx, dy] of si.cells) occ[(y + dy) * w + x + dx] = 1;
+    lvl.blocks.push(b); filled += si.cells.length;
+  }
+  // ice can't exceed blocks-1
+  for (const b of lvl.blocks) if (b.ice && b.ice >= lvl.blocks.length) delete b.ice;
+  return lvl;
+}
+
+// Necessary condition: every block can reach an exit on a board with only walls.
+function precheck(lvl) {
+  const ctx = CS.makeCtx(lvl);
+  for (let i = 0; i < ctx.blocks.length; i++) {
+    const pos = ctx.blocks.map(() => -1); const b = ctx.blocks[i]; pos[i] = b.y * ctx.w + b.x;
+    const occ = CS.occupancy(ctx, pos);
+    if (!CS.reachable(ctx, occ, pos, i).some(a => CS.canExitFrom(ctx, i, a, occ))) return false;
+  }
+  return true;
+}
+function score(lvl) {
+  if (!precheck(lvl)) return -1;
+  const r = CS.solve(lvl, null, CAP());
+  if (!r || r.unsolvable) return -1;
+  return r.relocs;
+}
+
+function mutate(lvl, T) {
+  const L = JSON.parse(JSON.stringify(lvl));
+  const occ = new Int8Array(L.w * L.h); for (const i of L.walls) occ[i] = 1;
+  for (const b of L.blocks) for (const [dx, dy] of CS.shapeInfo[b.sh].cells) occ[(b.y + dy) * L.w + b.x + dx] = 1;
+  const op = rnd();
+  if (op < 0.5 && L.blocks.length) { // move a block to a random free spot
+    const b = pick(L.blocks); const si = CS.shapeInfo[b.sh];
+    for (const [dx, dy] of si.cells) occ[(b.y + dy) * L.w + b.x + dx] = 0;
+    for (let t = 0; t < 50; t++) {
+      const x = ri(0, L.w - si.w), y = ri(0, L.h - si.h);
+      if (!si.cells.some(([dx, dy]) => occ[(y + dy) * L.w + x + dx])) { b.x = x; b.y = y; break; }
+    }
+  } else if (op < 0.75 && L.blocks.length) { // toggle axis
+    const b = pick(L.blocks); b.ax = b.ax ? 0 : (rnd() < 0.5 ? 1 : 2); if (!b.ax) delete b.ax;
+  } else if (op < 0.9) { // move a gate
+    const g = pick(L.gates); const len = (g.s === 'L' || g.s === 'R') ? L.h : L.w;
+    const np = ri(0, len - g.n);
+    if (!L.gates.some(o => o !== g && o.s === g.s && np < o.p + o.n + 1 && o.p < np + g.n + 1)) g.p = np;
+  } else { // shrink/grow gate
+    const g = pick(L.gates); g.n = Math.max(1, Math.min(3, g.n + (rnd() < 0.5 ? -1 : 1)));
+    const len = (g.s === 'L' || g.s === 'R') ? L.h : L.w; if (g.p + g.n > len) g.p = len - g.n;
+    if (L.gates.some(o => o !== g && o.s === g.s && g.p < o.p + o.n + 1 && o.p < g.p + g.n + 1)) return lvl;
+  }
+  return L;
+}
+
+function makeLevel(T) {
+  let best = null, bestS = -1;
+  for (let t = 0; t < 400 && bestS < 0; t++) { const l = randomLevel(T); const s = score(l); if (s >= 0) { best = l; bestS = s; } }
+  if (!best) return { lvl: null, relocs: -1 };
+  for (let it = 0; it < T.tries && bestS < T.target[0]; it++) {
+    const m = mutate(best, T); const s = score(m);
+    if (s >= bestS && s <= T.target[1]) { best = m; bestS = s; }
+  }
+  return { lvl: best, relocs: bestS };
+}
+
+
+// Unstoppable: difficulty ramps with the stage, with some randomness so runs feel different.
+function unstoppableTier(stage) {
+  let d = Math.min(1, (stage - 1) / 25) + (rnd() - 0.5) * 0.2;
+  d = Math.max(0, Math.min(1, d));
+  const r = x => Math.round(x);
+  return { w: [5 + r(d * 2), 5 + r(d * 2)], h: [6 + r(d * 3), 6 + r(d * 3)], colors: [3 + r(d * 3), 3 + r(d * 4)],
+    walls: [0, r(d * 3)], shapes: Array.from({ length: 6 + r(d * 11) }, (_, i) => i), axisP: 0.3 * d, iceP: 0.1 * d,
+    fill: [0.6 + 0.24 * d, 0.7 + 0.22 * d], target: [Math.floor(d * 5 + rnd() * 1.5), 99], tries: 40, d };
+}
+function generate(T, opts) {
+  opts = opts || {};
+  if (opts.seed != null) setSeed(opts.seed);
+  capOverride = opts.cap || 0; tierName = opts.tier || '';
+  return makeLevel(T);
+}
+root.CSGen = { TIERS, setSeed, generate, unstoppableTier, rnd };
+if (typeof module !== 'undefined') module.exports = root.CSGen;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>window.CS_LEVELS = [{"tier":"medium","w":6,"h":7,"walls":[28,34],"gates":[{"s":"R","p":2,"n":1,"c":6},{"s":"B","p":1,"n":3,"c":3},{"s":"T","p":3,"n":3,"c":3},{"s":"L","p":3,"n":3,"c":9},{"s":"L","p":1,"n":1,"c":1},{"s":"T","p":0,"n":2,"c":1}],"blocks":[{"c":1,"sh":8,"x":2,"y":1},{"c":9,"sh":9,"x":4,"y":2},{"c":9,"sh":1,"x":4,"y":1},{"c":6,"sh":0,"x":3,"y":5},{"c":1,"sh":6,"x":0,"y":0},{"c":9,"sh":3,"x":3,"y":6},{"c":6,"sh":1,"x":0,"y":6},{"c":9,"sh":2,"x":5,"y":4},{"c":1,"sh":4,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":2},{"c":6,"sh":3,"x":1,"y":0},{"c":6,"sh":0,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":4},{"c":3,"sh":0,"x":2,"y":5}],"opt":16,"moves":21,"relocs":2,"id":"8dpsug"},{"tier":"medium","w":6,"h":7,"walls":[28],"gates":[{"s":"B","p":3,"n":2,"c":2},{"s":"T","p":2,"n":3,"c":9},{"s":"L","p":0,"n":2,"c":1},{"s":"L","p":3,"n":3,"c":1},{"s":"B","p":1,"n":1,"c":8},{"s":"R","p":4,"n":2,"c":6}],"blocks":[{"c":2,"sh":0,"x":0,"y":3},{"c":1,"sh":1,"x":2,"y":1},{"c":9,"sh":4,"x":2,"y":2},{"c":1,"sh":3,"x":1,"y":6},{"c":2,"sh":9,"x":4,"y":5},{"c":9,"sh":6,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":1,"y":2},{"c":1,"sh":5,"x":4,"y":0},{"c":2,"sh":2,"x":5,"y":2},{"c":9,"sh":1,"x":0,"y":1},{"c":1,"sh":1,"x":0,"y":0},{"c":6,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":0,"y":2},{"c":6,"sh":1,"x":2,"y":5}],"opt":17,"moves":22,"relocs":2,"id":"1ism09t"},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":3,"c":8},{"s":"T","p":1,"n":1,"c":8},{"s":"B","p":0,"n":2,"c":1},{"s":"R","p":4,"n":3,"c":1},{"s":"L","p":1,"n":1,"c":2},{"s":"T","p":5,"n":1,"c":3}],"blocks":[{"c":1,"sh":5,"x":3,"y":0},{"c":1,"sh":1,"x":0,"y":7},{"c":1,"sh":9,"x":3,"y":2},{"c":1,"sh":8,"x":3,"y":4},{"c":3,"sh":2,"x":2,"y":1},{"c":1,"sh":2,"x":5,"y":5},{"c":8,"sh":6,"x":0,"y":0},{"c":8,"sh":7,"x":3,"y":5},{"c":1,"sh":9,"x":0,"y":4,"ax":2},{"c":2,"sh":1,"x":2,"y":7},{"c":1,"sh":7,"x":0,"y":2},{"c":8,"sh":3,"x":0,"y":6},{"c":2,"sh":1,"x":2,"y":3},{"c":3,"sh":2,"x":5,"y":2},{"c":1,"sh":0,"x":4,"y":7}],"opt":17,"moves":22,"relocs":2,"id":"1p9l2p"},{"tier":"medium","w":6,"h":7,"walls":[31],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":3,"c":8},{"s":"R","p":4,"n":1,"c":9},{"s":"R","p":2,"n":1,"c":6}],"blocks":[{"c":6,"sh":1,"x":0,"y":4},{"c":7,"sh":2,"x":2,"y":5},{"c":7,"sh":4,"x":3,"y":2},{"c":8,"sh":7,"x":4,"y":1},{"c":7,"sh":4,"x":5,"y":4},{"c":7,"sh":9,"x":3,"y":0},{"c":6,"sh":0,"x":0,"y":3},{"c":7,"sh":2,"x":3,"y":5},{"c":8,"sh":6,"x":1,"y":0},{"c":7,"sh":1,"x":0,"y":6},{"c":7,"sh":9,"x":1,"y":3},{"c":7,"sh":1,"x":1,"y":2},{"c":8,"sh":2,"x":4,"y":3},{"c":8,"sh":2,"x":4,"y":5},{"c":7,"sh":0,"x":0,"y":2}],"opt":17,"moves":22,"relocs":2,"id":"exxkr9"},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"B","p":5,"n":1,"c":1},{"s":"R","p":5,"n":1,"c":1},{"s":"B","p":2,"n":2,"c":6},{"s":"R","p":3,"n":1,"c":3},{"s":"L","p":1,"n":2,"c":3},{"s":"T","p":3,"n":2,"c":7},{"s":"L","p":4,"n":2,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":1},{"c":3,"sh":6,"x":1,"y":5},{"c":9,"sh":3,"x":3,"y":5},{"c":9,"sh":3,"x":0,"y":4},{"c":3,"sh":3,"x":3,"y":0},{"c":9,"sh":5,"x":4,"y":3},{"c":6,"sh":0,"x":2,"y":0},{"c":6,"sh":8,"x":0,"y":0},{"c":6,"sh":9,"x":0,"y":2},{"c":7,"sh":8,"x":3,"y":2},{"c":6,"sh":0,"x":4,"y":6},{"c":9,"sh":0,"x":0,"y":3},{"c":3,"sh":0,"x":1,"y":1},{"c":7,"sh":0,"x":2,"y":5},{"c":7,"sh":2,"x":5,"y":1}],"opt":17,"moves":22,"relocs":2,"id":"w91am"},{"tier":"medium","w":6,"h":7,"walls":[32,27],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"B","p":2,"n":2,"c":7},{"s":"T","p":1,"n":2,"c":2},{"s":"L","p":2,"n":1,"c":2},{"s":"L","p":4,"n":2,"c":0}],"blocks":[{"c":0,"sh":7,"x":1,"y":3},{"c":2,"sh":4,"x":2,"y":0},{"c":0,"sh":1,"x":4,"y":0},{"c":0,"sh":3,"x":3,"y":2},{"c":2,"sh":1,"x":4,"y":4},{"c":6,"sh":0,"x":3,"y":5},{"c":6,"sh":7,"x":3,"y":5},{"c":7,"sh":0,"x":5,"y":5},{"c":0,"sh":2,"x":0,"y":3},{"c":2,"sh":7,"x":0,"y":0},{"c":6,"sh":6,"x":0,"y":5},{"c":0,"sh":2,"x":1,"y":2},{"c":7,"sh":0,"x":5,"y":3},{"c":0,"sh":0,"x":5,"y":1},{"c":6,"sh":0,"x":3,"y":3},{"c":2,"sh":1,"x":3,"y":1}],"opt":18,"moves":23,"relocs":2,"id":"5jnztm"},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"B","p":1,"n":1,"c":7},{"s":"T","p":4,"n":1,"c":5},{"s":"L","p":1,"n":3,"c":1},{"s":"R","p":5,"n":1,"c":9}],"blocks":[{"c":5,"sh":0,"x":3,"y":4},{"c":4,"sh":8,"x":1,"y":0},{"c":7,"sh":0,"x":4,"y":0},{"c":4,"sh":6,"x":0,"y":5},{"c":4,"sh":3,"x":3,"y":6},{"c":9,"sh":1,"x":0,"y":3},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":8,"x":2,"y":1},{"c":1,"sh":5,"x":4,"y":4},{"c":1,"sh":2,"x":5,"y":1},{"c":1,"sh":1,"x":2,"y":5},{"c":4,"sh":3,"x":3,"y":3},{"c":4,"sh":3,"x":0,"y":4},{"c":4,"sh":2,"x":0,"y":1,"ax":2},{"c":9,"sh":0,"x":5,"y":0},{"c":5,"sh":0,"x":0,"y":0}],"opt":18,"moves":23,"relocs":2,"id":"vdlqau"},{"tier":"medium","w":6,"h":8,"walls":[33],"gates":[{"s":"B","p":0,"n":2,"c":1},{"s":"L","p":5,"n":3,"c":5},{"s":"L","p":3,"n":1,"c":6},{"s":"R","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":0,"n":2,"c":3}],"blocks":[{"c":6,"sh":4,"x":5,"y":0},{"c":1,"sh":6,"x":3,"y":3},{"c":6,"sh":8,"x":3,"y":1},{"c":6,"sh":1,"x":1,"y":6},{"c":6,"sh":2,"x":0,"y":2},{"c":3,"sh":1,"x":0,"y":0},{"c":6,"sh":4,"x":0,"y":4},{"c":5,"sh":3,"x":1,"y":7,"ax":1},{"c":5,"sh":3,"x":3,"y":6},{"c":3,"sh":2,"x":2,"y":4},{"c":5,"sh":1,"x":4,"y":5},{"c":1,"sh":6,"x":4,"y":2},{"c":5,"sh":1,"x":4,"y":7},{"c":3,"sh":0,"x":1,"y":4},{"c":6,"sh":0,"x":3,"y":0},{"c":1,"sh":0,"x":2,"y":3},{"c":1,"sh":2,"x":1,"y":2}],"opt":19,"moves":24,"relocs":2,"id":"1y9wghb"},{"tier":"medium","w":6,"h":8,"walls":[19],"gates":[{"s":"B","p":0,"n":3,"c":4},{"s":"R","p":6,"n":2,"c":2},{"s":"T","p":1,"n":1,"c":1},{"s":"T","p":4,"n":2,"c":9}],"blocks":[{"c":4,"sh":9,"x":2,"y":1},{"c":4,"sh":3,"x":2,"y":3},{"c":4,"sh":1,"x":2,"y":7},{"c":4,"sh":1,"x":0,"y":4},{"c":9,"sh":6,"x":4,"y":0},{"c":1,"sh":0,"x":0,"y":7},{"c":1,"sh":4,"x":1,"y":0},{"c":9,"sh":1,"x":2,"y":6},{"c":4,"sh":4,"x":4,"y":5},{"c":4,"sh":7,"x":2,"y":4},{"c":1,"sh":2,"x":0,"y":0},{"c":4,"sh":2,"x":5,"y":2},{"c":2,"sh":0,"x":4,"y":4},{"c":4,"sh":2,"x":1,"y":6},{"c":4,"sh":8,"x":0,"y":5},{"c":4,"sh":0,"x":2,"y":2},{"c":9,"sh":0,"x":2,"y":0}],"opt":19,"moves":24,"relocs":2,"id":"1pvr6aq"},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":6,"n":2,"c":9},{"s":"R","p":2,"n":3,"c":0},{"s":"L","p":1,"n":1,"c":6},{"s":"B","p":2,"n":3,"c":2}],"blocks":[{"c":0,"sh":4,"x":1,"y":5},{"c":2,"sh":2,"x":0,"y":3},{"c":2,"sh":3,"x":0,"y":1},{"c":2,"sh":6,"x":3,"y":4},{"c":2,"sh":9,"x":3,"y":2},{"c":2,"sh":1,"x":2,"y":6,"ax":2},{"c":0,"sh":7,"x":4,"y":5},{"c":6,"sh":0,"x":5,"y":4},{"c":2,"sh":0,"x":4,"y":7},{"c":2,"sh":4,"x":5,"y":1},{"c":2,"sh":0,"x":3,"y":7},{"c":9,"sh":3,"x":1,"y":3},{"c":2,"sh":5,"x":3,"y":0},{"c":2,"sh":0,"x":2,"y":5},{"c":2,"sh":2,"x":0,"y":5},{"c":2,"sh":0,"x":5,"y":0},{"c":0,"sh":0,"x":1,"y":4},{"c":2,"sh":3,"x":0,"y":2}],"opt":20,"moves":25,"relocs":2,"id":"g5ylh9"},{"tier":"medium","w":6,"h":8,"walls":[10],"gates":[{"s":"L","p":4,"n":3,"c":2},{"s":"R","p":3,"n":1,"c":8},{"s":"L","p":0,"n":2,"c":8},{"s":"T","p":0,"n":3,"c":1},{"s":"B","p":2,"n":3,"c":1},{"s":"T","p":5,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":7},{"s":"R","p":0,"n":1,"c":5}],"blocks":[{"c":8,"sh":2,"x":0,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":2,"sh":4,"x":2,"y":2},{"c":8,"sh":6,"x":1,"y":5},{"c":1,"sh":0,"x":5,"y":4},{"c":1,"sh":6,"x":3,"y":3},{"c":7,"sh":2,"x":0,"y":6},{"c":1,"sh":6,"x":1,"y":0},{"c":2,"sh":9,"x":3,"y":6},{"c":2,"sh":7,"x":4,"y":2},{"c":7,"sh":0,"x":0,"y":3},{"c":2,"sh":0,"x":2,"y":5,"ax":1},{"c":1,"sh":0,"x":5,"y":6},{"c":1,"sh":8,"x":0,"y":4},{"c":8,"sh":1,"x":1,"y":7},{"c":8,"sh":0,"x":3,"y":1},{"c":8,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":5,"y":5},{"c":5,"sh":0,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2,"id":"1i8rytw"},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"B","p":2,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":3},{"c":6,"sh":1,"x":0,"y":3},{"c":6,"sh":9,"x":2,"y":0},{"c":6,"sh":9,"x":4,"y":0},{"c":6,"sh":6,"x":4,"y":1},{"c":6,"sh":8,"x":1,"y":5},{"c":9,"sh":1,"x":3,"y":4},{"c":9,"sh":3,"x":3,"y":6},{"c":0,"sh":0,"x":1,"y":0},{"c":9,"sh":0,"x":0,"y":5},{"c":3,"sh":0,"x":1,"y":7},{"c":6,"sh":0,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":1},{"c":9,"sh":3,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":1},{"c":6,"sh":0,"x":5,"y":4},{"c":0,"sh":2,"x":2,"y":6},{"c":6,"sh":3,"x":3,"y":5,"ax":1},{"c":9,"sh":1,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2,"id":"1n97sfa"},{"tier":"medium","w":6,"h":7,"walls":[8,9],"gates":[{"s":"L","p":4,"n":2,"c":9},{"s":"L","p":0,"n":1,"c":3},{"s":"B","p":3,"n":3,"c":1},{"s":"B","p":0,"n":1,"c":5},{"s":"R","p":4,"n":1,"c":7}],"blocks":[{"c":1,"sh":8,"x":3,"y":3,"ax":2},{"c":1,"sh":0,"x":1,"y":0},{"c":9,"sh":9,"x":4,"y":2},{"c":1,"sh":8,"x":0,"y":3},{"c":9,"sh":0,"x":3,"y":2},{"c":1,"sh":7,"x":4,"y":0},{"c":9,"sh":9,"x":1,"y":5},{"c":9,"sh":8,"x":3,"y":5},{"c":3,"sh":3,"x":2,"y":0,"ax":1},{"c":9,"sh":6,"x":0,"y":1},{"c":3,"sh":0,"x":0,"y":6},{"c":1,"sh":1,"x":4,"y":6},{"c":9,"sh":7,"x":1,"y":3}],"opt":16,"moves":21,"relocs":3,"id":"yg0p2c"},{"tier":"medium","w":6,"h":7,"walls":[15],"gates":[{"s":"R","p":5,"n":1,"c":3},{"s":"B","p":1,"n":3,"c":1},{"s":"T","p":3,"n":3,"c":9},{"s":"B","p":5,"n":1,"c":9},{"s":"L","p":5,"n":1,"c":6}],"blocks":[{"c":9,"sh":8,"x":4,"y":0,"ax":2},{"c":1,"sh":8,"x":1,"y":1},{"c":1,"sh":5,"x":4,"y":2},{"c":9,"sh":7,"x":1,"y":3},{"c":9,"sh":0,"x":5,"y":6,"ax":2},{"c":1,"sh":9,"x":2,"y":5},{"c":9,"sh":4,"x":0,"y":3},{"c":9,"sh":2,"x":0,"y":0},{"c":9,"sh":8,"x":4,"y":4},{"c":1,"sh":9,"x":2,"y":0},{"c":6,"sh":0,"x":1,"y":3},{"c":9,"sh":0,"x":2,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":1,"sh":0,"x":0,"y":6}],"opt":17,"moves":22,"relocs":3,"id":"6xpdf6"},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":1,"c":2},{"s":"L","p":3,"n":1,"c":8},{"s":"L","p":5,"n":3,"c":3},{"s":"R","p":4,"n":1,"c":9},{"s":"B","p":1,"n":3,"c":0}],"blocks":[{"c":2,"sh":1,"x":3,"y":5},{"c":0,"sh":5,"x":1,"y":0,"ax":2},{"c":8,"sh":3,"x":0,"y":2},{"c":3,"sh":0,"x":3,"y":4},{"c":0,"sh":8,"x":4,"y":0},{"c":3,"sh":3,"x":0,"y":6},{"c":0,"sh":8,"x":0,"y":3},{"c":3,"sh":9,"x":3,"y":3},{"c":3,"sh":3,"x":3,"y":6},{"c":2,"sh":0,"x":2,"y":3},{"c":3,"sh":9,"x":1,"y":4},{"c":2,"sh":0,"x":5,"y":3},{"c":2,"sh":3,"x":2,"y":7},{"c":0,"sh":2,"x":5,"y":4},{"c":3,"sh":0,"x":5,"y":7,"ax":1},{"c":9,"sh":0,"x":1,"y":7},{"c":8,"sh":3,"x":3,"y":2}],"opt":20,"moves":25,"relocs":3,"id":"nmybbn"},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"L","p":3,"n":3,"c":6},{"s":"B","p":0,"n":1,"c":1},{"s":"L","p":0,"n":1,"c":2}],"blocks":[{"c":6,"sh":2,"x":4,"y":2},{"c":4,"sh":5,"x":3,"y":4},{"c":2,"sh":3,"x":0,"y":1},{"c":4,"sh":2,"x":1,"y":5,"ax":2},{"c":6,"sh":8,"x":0,"y":3},{"c":1,"sh":0,"x":0,"y":0},{"c":2,"sh":3,"x":3,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":4,"sh":8,"x":2,"y":2},{"c":4,"sh":3,"x":3,"y":6},{"c":2,"sh":1,"x":0,"y":2},{"c":2,"sh":3,"x":1,"y":0},{"c":6,"sh":2,"x":2,"y":4,"ax":1}],"opt":17,"moves":22,"relocs":4,"id":"12vlugj"},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":2,"c":6},{"s":"B","p":4,"n":1,"c":5},{"s":"B","p":0,"n":3,"c":1},{"s":"L","p":0,"n":1,"c":0},{"s":"T","p":3,"n":2,"c":0},{"s":"R","p":3,"n":3,"c":4}],"blocks":[{"c":4,"sh":6,"x":1,"y":3},{"c":4,"sh":4,"x":3,"y":0},{"c":4,"sh":0,"x":0,"y":6},{"c":1,"sh":4,"x":4,"y":4},{"c":6,"sh":2,"x":5,"y":4},{"c":4,"sh":7,"x":2,"y":6},{"c":1,"sh":0,"x":2,"y":6},{"c":4,"sh":8,"x":3,"y":3},{"c":1,"sh":2,"x":1,"y":5},{"c":6,"sh":0,"x":0,"y":4,"ax":1},{"c":0,"sh":4,"x":2,"y":0},{"c":4,"sh":1,"x":4,"y":2},{"c":1,"sh":9,"x":0,"y":1},{"c":5,"sh":2,"x":0,"y":2},{"c":1,"sh":8,"x":4,"y":0},{"c":5,"sh":0,"x":1,"y":7},{"c":4,"sh":0,"x":3,"y":5},{"c":1,"sh":2,"x":5,"y":6}],"opt":22,"moves":27,"relocs":4,"id":"1xr5plj"},{"tier":"medium","w":6,"h":7,"walls":[33],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":6},{"s":"R","p":1,"n":3,"c":6},{"s":"T","p":2,"n":2,"c":0},{"s":"L","p":6,"n":1,"c":8}],"blocks":[{"c":6,"sh":7,"x":1,"y":3},{"c":8,"sh":3,"x":2,"y":6},{"c":7,"sh":2,"x":5,"y":0},{"c":6,"sh":3,"x":0,"y":1},{"c":7,"sh":6,"x":4,"y":4},{"c":0,"sh":4,"x":4,"y":1},{"c":6,"sh":6,"x":0,"y":4},{"c":7,"sh":2,"x":3,"y":3},{"c":6,"sh":0,"x":5,"y":2},{"c":7,"sh":7,"x":2,"y":1},{"c":8,"sh":0,"x":1,"y":6},{"c":0,"sh":0,"x":5,"y":3},{"c":8,"sh":0,"x":0,"y":6},{"c":6,"sh":2,"x":1,"y":2},{"c":8,"sh":1,"x":2,"y":0}],"opt":20,"moves":25,"relocs":5,"id":"1ioxpoh"},{"tier":"medium","w":6,"h":8,"walls":[15,28],"gates":[{"s":"B","p":2,"n":2,"c":2},{"s":"T","p":0,"n":2,"c":4},{"s":"R","p":5,"n":2,"c":9},{"s":"L","p":3,"n":2,"c":9},{"s":"T","p":4,"n":2,"c":7},{"s":"R","p":2,"n":2,"c":7},{"s":"R","p":0,"n":1,"c":8}],"blocks":[{"c":9,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":4},{"c":9,"sh":1,"x":0,"y":2},{"c":9,"sh":8,"x":0,"y":5},{"c":7,"sh":1,"x":0,"y":3},{"c":4,"sh":9,"x":3,"y":5},{"c":7,"sh":9,"x":4,"y":2,"ax":1},{"c":9,"sh":0,"x":2,"y":1},{"c":7,"sh":3,"x":2,"y":0},{"c":9,"sh":2,"x":2,"y":4},{"c":4,"sh":9,"x":2,"y":3},{"c":7,"sh":1,"x":3,"y":1},{"c":8,"sh":0,"x":4,"y":3},{"c":9,"sh":2,"x":5,"y":6},{"c":2,"sh":9,"x":0,"y":0},{"c":2,"sh":2,"x":3,"y":6},{"c":7,"sh":1,"x":1,"y":6}],"opt":23,"moves":28,"relocs":6,"id":"1wqishj"},{"tier":"medium","w":6,"h":7,"walls":[8,27],"gates":[{"s":"T","p":1,"n":3,"c":7},{"s":"B","p":1,"n":2,"c":5},{"s":"R","p":3,"n":1,"c":1},{"s":"L","p":1,"n":2,"c":8},{"s":"L","p":4,"n":2,"c":8}],"blocks":[{"c":5,"sh":1,"x":1,"y":4},{"c":7,"sh":1,"x":3,"y":3},{"c":8,"sh":2,"x":1,"y":5},{"c":5,"sh":7,"x":2,"y":1},{"c":8,"sh":3,"x":2,"y":0},{"c":5,"sh":8,"x":0,"y":1},{"c":7,"sh":1,"x":4,"y":6},{"c":5,"sh":4,"x":0,"y":4},{"c":5,"sh":1,"x":2,"y":6},{"c":7,"sh":1,"x":1,"y":3},{"c":8,"sh":3,"x":3,"y":5},{"c":7,"sh":1,"x":4,"y":1},{"c":8,"sh":7,"x":4,"y":3},{"c":8,"sh":0,"x":0,"y":3},{"c":8,"sh":0,"x":1,"y":0}],"opt":22,"moves":27,"relocs":7,"id":"3cyl6j"},{"tier":"hard","w":6,"h":8,"walls":[8,26],"gates":[{"s":"L","p":3,"n":3,"c":1},{"s":"T","p":0,"n":3,"c":1},{"s":"R","p":2,"n":2,"c":7},{"s":"B","p":3,"n":3,"c":7},{"s":"B","p":0,"n":1,"c":0},{"s":"R","p":5,"n":1,"c":0},{"s":"T","p":4,"n":2,"c":2},{"s":"R","p":0,"n":1,"c":9},{"s":"R","p":7,"n":1,"c":9}],"blocks":[{"c":7,"sh":9,"x":4,"y":0},{"c":7,"sh":8,"x":1,"y":2},{"c":7,"sh":6,"x":4,"y":2,"ax":2},{"c":0,"sh":4,"x":0,"y":4},{"c":7,"sh":2,"x":4,"y":4},{"c":1,"sh":2,"x":3,"y":4},{"c":2,"sh":0,"x":4,"y":7},{"c":1,"sh":11,"x":0,"y":0},{"c":0,"sh":4,"x":2,"y":5},{"c":0,"sh":1,"x":3,"y":6},{"c":1,"sh":7,"x":0,"y":6},{"c":7,"sh":2,"x":5,"y":6},{"c":7,"sh":8,"x":3,"y":1},{"c":0,"sh":0,"x":3,"y":0},{"c":2,"sh":2,"x":0,"y":2},{"c":0,"sh":2,"x":5,"y":4}],"opt":20,"moves":23,"relocs":4,"id":"v53rrp"},{"tier":"hard","w":6,"h":9,"walls":[38,26],"gates":[{"s":"R","p":2,"n":2,"c":6},{"s":"B","p":4,"n":2,"c":5},{"s":"R","p":6,"n":2,"c":9},{"s":"T","p":1,"n":3,"c":9},{"s":"L","p":0,"n":2,"c":0},{"s":"B","p":0,"n":1,"c":8},{"s":"L","p":8,"n":1,"c":8}],"blocks":[{"c":8,"sh":4,"x":1,"y":6},{"c":6,"sh":2,"x":5,"y":3},{"c":8,"sh":4,"x":3,"y":6},{"c":8,"sh":3,"x":1,"y":1},{"c":6,"sh":1,"x":3,"y":2},{"c":9,"sh":12,"x":0,"y":0},{"c":0,"sh":9,"x":4,"y":0,"ice":4},{"c":6,"sh":11,"x":3,"y":5},{"c":6,"sh":12,"x":1,"y":3,"ice":4},{"c":9,"sh":0,"x":5,"y":6,"ice":5},{"c":0,"sh":2,"x":0,"y":6,"ice":5},{"c":9,"sh":10,"x":0,"y":3},{"c":0,"sh":7,"x":4,"y":7},{"c":6,"sh":0,"x":4,"y":3},{"c":0,"sh":1,"x":3,"y":4},{"c":0,"sh":2,"x":2,"y":7},{"c":9,"sh":3,"x":0,"y":2}],"opt":21,"moves":24,"relocs":4,"id":"1hq1e4d"},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"T","p":3,"n":2,"c":9},{"s":"L","p":8,"n":1,"c":5},{"s":"L","p":0,"n":3,"c":7},{"s":"B","p":4,"n":1,"c":7},{"s":"R","p":0,"n":2,"c":4},{"s":"R","p":4,"n":2,"c":0},{"s":"B","p":0,"n":1,"c":0}],"blocks":[{"c":7,"sh":11,"x":2,"y":4},{"c":9,"sh":2,"x":4,"y":2},{"c":4,"sh":5,"x":5,"y":7},{"c":7,"sh":10,"x":2,"y":6},{"c":9,"sh":1,"x":1,"y":0},{"c":9,"sh":6,"x":1,"y":1},{"c":7,"sh":4,"x":0,"y":6},{"c":0,"sh":5,"x":5,"y":5},{"c":0,"sh":0,"x":6,"y":0},{"c":7,"sh":8,"x":5,"y":3},{"c":4,"sh":5,"x":0,"y":4},{"c":0,"sh":4,"x":1,"y":6},{"c":5,"sh":3,"x":2,"y":1},{"c":7,"sh":0,"x":5,"y":2},{"c":9,"sh":9,"x":3,"y":6,"ax":2},{"c":4,"sh":9,"x":5,"y":1},{"c":9,"sh":0,"x":3,"y":7},{"c":4,"sh":6,"x":0,"y":2},{"c":4,"sh":0,"x":3,"y":0,"ax":1}],"opt":23,"moves":26,"relocs":4,"id":"1idyx01"},{"tier":"hard","w":7,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":1,"c":2},{"s":"R","p":4,"n":1,"c":3},{"s":"L","p":5,"n":2,"c":3},{"s":"B","p":4,"n":1,"c":8},{"s":"R","p":2,"n":1,"c":4},{"s":"B","p":0,"n":3,"c":6}],"blocks":[{"c":4,"sh":3,"x":4,"y":1},{"c":3,"sh":3,"x":2,"y":5,"ax":1},{"c":3,"sh":1,"x":2,"y":6},{"c":3,"sh":7,"x":2,"y":3},{"c":2,"sh":1,"x":3,"y":0},{"c":3,"sh":7,"x":4,"y":3,"ice":3},{"c":6,"sh":10,"x":0,"y":1,"ax":2},{"c":6,"sh":6,"x":5,"y":5},{"c":3,"sh":11,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":5},{"c":4,"sh":1,"x":1,"y":2},{"c":4,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":6},{"c":3,"sh":6,"x":4,"y":6},{"c":3,"sh":0,"x":1,"y":6,"ice":2},{"c":3,"sh":0,"x":6,"y":0},{"c":8,"sh":0,"x":5,"y":0},{"c":8,"sh":2,"x":4,"y":2,"ax":2},{"c":6,"sh":1,"x":5,"y":2},{"c":6,"sh":1,"x":2,"y":1},{"c":8,"sh":4,"x":6,"y":3}],"opt":25,"moves":28,"relocs":4,"id":"zjn7aa"},{"tier":"hard","w":7,"h":9,"walls":[38],"gates":[{"s":"L","p":1,"n":2,"c":1},{"s":"T","p":0,"n":2,"c":5},{"s":"R","p":1,"n":3,"c":6},{"s":"R","p":6,"n":3,"c":6},{"s":"T","p":3,"n":1,"c":0},{"s":"B","p":4,"n":2,"c":4},{"s":"L","p":5,"n":1,"c":3},{"s":"L","p":7,"n":2,"c":3}],"blocks":[{"c":5,"sh":1,"x":2,"y":2},{"c":5,"sh":6,"x":5,"y":4},{"c":0,"sh":2,"x":6,"y":2},{"c":6,"sh":7,"x":2,"y":7},{"c":6,"sh":3,"x":4,"y":8,"ax":1},{"c":5,"sh":1,"x":0,"y":0,"ice":2},{"c":3,"sh":11,"x":1,"y":6,"ice":5},{"c":1,"sh":12,"x":4,"y":6},{"c":1,"sh":12,"x":3,"y":0},{"c":1,"sh":9,"x":0,"y":7},{"c":1,"sh":12,"x":2,"y":3},{"c":3,"sh":1,"x":5,"y":1},{"c":6,"sh":0,"x":6,"y":4},{"c":5,"sh":7,"x":1,"y":0},{"c":5,"sh":6,"x":0,"y":4},{"c":5,"sh":2,"x":0,"y":1},{"c":1,"sh":2,"x":5,"y":2},{"c":1,"sh":0,"x":5,"y":7},{"c":4,"sh":0,"x":4,"y":5,"ax":2},{"c":0,"sh":0,"x":0,"y":6},{"c":1,"sh":0,"x":3,"y":4}],"opt":25,"moves":28,"relocs":4,"id":"1v58r3m"},{"tier":"hard","w":7,"h":8,"walls":[33,44,38],"gates":[{"s":"R","p":2,"n":3,"c":5},{"s":"B","p":1,"n":1,"c":1},{"s":"T","p":3,"n":3,"c":3},{"s":"L","p":3,"n":3,"c":6},{"s":"T","p":1,"n":1,"c":0}],"blocks":[{"c":5,"sh":2,"x":6,"y":4},{"c":5,"sh":11,"x":2,"y":3},{"c":3,"sh":5,"x":3,"y":0},{"c":5,"sh":12,"x":0,"y":4},{"c":5,"sh":1,"x":1,"y":5},{"c":6,"sh":1,"x":1,"y":0},{"c":6,"sh":8,"x":0,"y":6},{"c":3,"sh":8,"x":0,"y":2},{"c":3,"sh":1,"x":4,"y":5,"ice":2},{"c":5,"sh":0,"x":5,"y":0,"ice":3},{"c":3,"sh":7,"x":5,"y":0},{"c":5,"sh":0,"x":4,"y":7},{"c":5,"sh":6,"x":2,"y":1},{"c":1,"sh":0,"x":1,"y":1},{"c":3,"sh":8,"x":5,"y":2},{"c":1,"sh":0,"x":5,"y":6},{"c":6,"sh":0,"x":1,"y":3},{"c":1,"sh":0,"x":4,"y":6},{"c":6,"sh":1,"x":2,"y":7,"ice":5},{"c":6,"sh":1,"x":5,"y":7,"ice":2},{"c":1,"sh":0,"x":0,"y":0}],"opt":25,"moves":28,"relocs":4,"id":"1mbluvd"},{"tier":"hard","w":6,"h":9,"walls":[],"gates":[{"s":"R","p":1,"n":3,"c":2},{"s":"R","p":8,"n":1,"c":5},{"s":"B","p":4,"n":2,"c":5},{"s":"T","p":2,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":4},{"s":"R","p":5,"n":1,"c":9},{"s":"B","p":0,"n":2,"c":7},{"s":"T","p":0,"n":1,"c":3}],"blocks":[{"c":2,"sh":12,"x":3,"y":0},{"c":2,"sh":1,"x":1,"y":6},{"c":2,"sh":11,"x":3,"y":3},{"c":2,"sh":9,"x":1,"y":4},{"c":2,"sh":11,"x":0,"y":7},{"c":2,"sh":9,"x":0,"y":2},{"c":2,"sh":2,"x":4,"y":6},{"c":7,"sh":4,"x":3,"y":4},{"c":4,"sh":0,"x":0,"y":0},{"c":7,"sh":0,"x":2,"y":2},{"c":5,"sh":8,"x":0,"y":5},{"c":3,"sh":0,"x":4,"y":1},{"c":5,"sh":7,"x":4,"y":7},{"c":2,"sh":7,"x":4,"y":1,"ax":1},{"c":9,"sh":0,"x":1,"y":0},{"c":4,"sh":0,"x":3,"y":8},{"c":4,"sh":0,"x":5,"y":4},{"c":4,"sh":9,"x":4,"y":5,"ice":4},{"c":9,"sh":1,"x":1,"y":1},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":0,"x":2,"y":0},{"c":2,"sh":0,"x":0,"y":3}],"opt":26,"moves":29,"relocs":4,"id":"18cx2pr"},{"tier":"hard","w":7,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":2,"c":8},{"s":"B","p":1,"n":3,"c":8},{"s":"R","p":5,"n":3,"c":0},{"s":"T","p":6,"n":1,"c":0},{"s":"T","p":2,"n":1,"c":6},{"s":"T","p":4,"n":1,"c":6},{"s":"L","p":4,"n":2,"c":5},{"s":"L","p":1,"n":1,"c":5},{"s":"B","p":5,"n":2,"c":2}],"blocks":[{"c":8,"sh":12,"x":3,"y":6},{"c":8,"sh":8,"x":0,"y":5},{"c":2,"sh":4,"x":6,"y":0},{"c":6,"sh":2,"x":6,"y":5},{"c":2,"sh":9,"x":3,"y":1},{"c":2,"sh":6,"x":2,"y":2},{"c":2,"sh":1,"x":4,"y":4},{"c":0,"sh":3,"x":0,"y":7},{"c":8,"sh":0,"x":2,"y":6,"ax":2},{"c":8,"sh":0,"x":2,"y":4,"ax":2},{"c":6,"sh":2,"x":0,"y":1},{"c":0,"sh":0,"x":1,"y":6},{"c":0,"sh":0,"x":0,"y":0},{"c":8,"sh":2,"x":1,"y":3,"ax":2},{"c":8,"sh":6,"x":5,"y":2},{"c":0,"sh":1,"x":4,"y":7},{"c":0,"sh":0,"x":0,"y":3},{"c":2,"sh":1,"x":3,"y":5},{"c":8,"sh":11,"x":1,"y":0},{"c":5,"sh":0,"x":3,"y":2},{"c":0,"sh":0,"x":0,"y":4},{"c":5,"sh":0,"x":1,"y":1,"ax":1}],"opt":26,"moves":29,"relocs":4,"id":"j4urm5"},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"B","p":4,"n":3,"c":6},{"s":"T","p":6,"n":1,"c":6},{"s":"L","p":6,"n":3,"c":2},{"s":"T","p":0,"n":1,"c":2},{"s":"R","p":1,"n":3,"c":1},{"s":"R","p":5,"n":1,"c":4},{"s":"R","p":7,"n":2,"c":0}],"blocks":[{"c":2,"sh":11,"x":0,"y":5},{"c":1,"sh":0,"x":0,"y":1,"ax":1},{"c":6,"sh":3,"x":1,"y":8},{"c":6,"sh":10,"x":5,"y":4,"ax":2},{"c":4,"sh":0,"x":4,"y":1},{"c":6,"sh":9,"x":5,"y":1,"ax":2},{"c":2,"sh":2,"x":4,"y":7},{"c":0,"sh":12,"x":2,"y":3},{"c":4,"sh":1,"x":2,"y":0},{"c":4,"sh":1,"x":5,"y":8},{"c":6,"sh":10,"x":0,"y":2},{"c":2,"sh":0,"x":0,"y":8},{"c":2,"sh":9,"x":5,"y":3},{"c":0,"sh":7,"x":2,"y":5},{"c":4,"sh":0,"x":6,"y":7},{"c":0,"sh":8,"x":2,"y":1},{"c":1,"sh":0,"x":3,"y":4},{"c":6,"sh":4,"x":1,"y":0},{"c":1,"sh":3,"x":3,"y":2,"ax":1},{"c":0,"sh":0,"x":4,"y":0,"ice":3},{"c":2,"sh":1,"x":5,"y":0},{"c":6,"sh":0,"x":0,"y":6}],"opt":26,"moves":29,"relocs":4,"id":"36z196"},{"tier":"hard","w":7,"h":9,"walls":[],"gates":[{"s":"R","p":4,"n":1,"c":5},{"s":"B","p":2,"n":2,"c":5},{"s":"R","p":6,"n":1,"c":0},{"s":"L","p":2,"n":1,"c":2},{"s":"T","p":0,"n":1,"c":2},{"s":"R","p":1,"n":1,"c":4},{"s":"T","p":2,"n":2,"c":8}],"blocks":[{"c":5,"sh":9,"x":4,"y":0},{"c":0,"sh":3,"x":3,"y":6},{"c":5,"sh":8,"x":1,"y":2},{"c":4,"sh":3,"x":3,"y":7},{"c":5,"sh":5,"x":3,"y":1},{"c":5,"sh":4,"x":0,"y":0},{"c":8,"sh":4,"x":1,"y":4},{"c":4,"sh":0,"x":2,"y":0},{"c":2,"sh":4,"x":2,"y":4},{"c":5,"sh":9,"x":1,"y":7,"ice":2},{"c":5,"sh":0,"x":3,"y":4,"ice":5},{"c":5,"sh":9,"x":4,"y":4},{"c":5,"sh":0,"x":4,"y":3},{"c":5,"sh":4,"x":0,"y":6},{"c":5,"sh":7,"x":5,"y":7},{"c":5,"sh":2,"x":1,"y":0},{"c":5,"sh":5,"x":5,"y":2},{"c":5,"sh":0,"x":3,"y":0},{"c":0,"sh":0,"x":0,"y":5},{"c":2,"sh":0,"x":6,"y":0},{"c":2,"sh":0,"x":0,"y":4},{"c":5,"sh":0,"x":6,"y":6},{"c":0,"sh":0,"x":4,"y":5},{"c":0,"sh":1,"x":2,"y":3}],"opt":28,"moves":31,"relocs":4,"id":"xja3w2"},{"tier":"hard","w":6,"h":8,"walls":[10],"gates":[{"s":"L","p":7,"n":1,"c":3},{"s":"B","p":2,"n":3,"c":6},{"s":"R","p":6,"n":2,"c":6},{"s":"R","p":2,"n":3,"c":8},{"s":"L","p":0,"n":1,"c":0},{"s":"T","p":1,"n":2,"c":0},{"s":"L","p":4,"n":2,"c":2},{"s":"T","p":4,"n":2,"c":2}],"blocks":[{"c":6,"sh":2,"x":4,"y":4,"ice":3},{"c":2,"sh":1,"x":2,"y":0},{"c":2,"sh":7,"x":1,"y":3},{"c":2,"sh":5,"x":0,"y":5},{"c":0,"sh":10,"x":0,"y":1},{"c":0,"sh":2,"x":3,"y":1},{"c":8,"sh":8,"x":3,"y":6},{"c":6,"sh":0,"x":2,"y":1},{"c":3,"sh":0,"x":1,"y":0,"ice":5},{"c":8,"sh":0,"x":2,"y":7},{"c":3,"sh":0,"x":5,"y":5},{"c":0,"sh":0,"x":4,"y":0,"ice":2},{"c":8,"sh":1,"x":1,"y":2},{"c":3,"sh":1,"x":3,"y":3},{"c":6,"sh":0,"x":5,"y":3},{"c":6,"sh":0,"x":5,"y":6},{"c":0,"sh":0,"x":4,"y":7},{"c":8,"sh":0,"x":4,"y":2},{"c":0,"sh":0,"x":2,"y":6,"ice":4,"ax":2},{"c":6,"sh":0,"x":3,"y":5},{"c":0,"sh":0,"x":5,"y":2},{"c":8,"sh":0,"x":5,"y":1},{"c":0,"sh":0,"x":0,"y":0},{"c":2,"sh":0,"x":1,"y":1,"ice":3},{"c":8,"sh":0,"x":3,"y":4},{"c":0,"sh":0,"x":5,"y":7}],"opt":30,"moves":33,"relocs":4,"id":"rrzwcs"},{"tier":"hard","w":7,"h":9,"walls":[17,16],"gates":[{"s":"L","p":0,"n":2,"c":5},{"s":"T","p":5,"n":2,"c":3},{"s":"L","p":4,"n":1,"c":3},{"s":"R","p":4,"n":3,"c":7},{"s":"R","p":1,"n":1,"c":1},{"s":"T","p":2,"n":2,"c":4},{"s":"B","p":5,"n":2,"c":8}],"blocks":[{"c":3,"sh":6,"x":5,"y":0},{"c":5,"sh":12,"x":4,"y":5},{"c":4,"sh":7,"x":0,"y":1},{"c":5,"sh":1,"x":5,"y":2},{"c":7,"sh":12,"x":2,"y":3},{"c":7,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":4,"y":0},{"c":7,"sh":7,"x":3,"y":7},{"c":7,"sh":9,"x":5,"y":7},{"c":3,"sh":0,"x":1,"y":6},{"c":5,"sh":3,"x":1,"y":7},{"c":1,"sh":0,"x":5,"y":3},{"c":1,"sh":1,"x":0,"y":8},{"c":4,"sh":0,"x":2,"y":0,"ax":2},{"c":7,"sh":8,"x":2,"y":5},{"c":4,"sh":0,"x":1,"y":4},{"c":1,"sh":0,"x":6,"y":6,"ice":3},{"c":8,"sh":0,"x":3,"y":4},{"c":1,"sh":3,"x":4,"y":4},{"c":3,"sh":0,"x":4,"y":2},{"c":4,"sh":0,"x":0,"y":6},{"c":4,"sh":0,"x":2,"y":8},{"c":5,"sh":2,"x":3,"y":0},{"c":8,"sh":0,"x":6,"y":3},{"c":5,"sh":0,"x":0,"y":7},{"c":8,"sh":0,"x":5,"y":6},{"c":5,"sh":2,"x":0,"y":0}],"opt":31,"moves":34,"relocs":4,"id":"148sofp"},{"tier":"hard","w":7,"h":8,"walls":[12,36,22],"gates":[{"s":"T","p":2,"n":3,"c":4},{"s":"R","p":0,"n":1,"c":4},{"s":"B","p":2,"n":1,"c":6},{"s":"L","p":3,"n":3,"c":6},{"s":"B","p":4,"n":2,"c":1},{"s":"T","p":0,"n":1,"c":0},{"s":"R","p":7,"n":1,"c":0},{"s":"R","p":5,"n":1,"c":3},{"s":"L","p":0,"n":1,"c":8}],"blocks":[{"c":4,"sh":9,"x":2,"y":1},{"c":4,"sh":6,"x":5,"y":5,"ice":5},{"c":4,"sh":6,"x":4,"y":3},{"c":0,"sh":0,"x":0,"y":3},{"c":4,"sh":5,"x":0,"y":0},{"c":4,"sh":4,"x":6,"y":0},{"c":6,"sh":2,"x":5,"y":2},{"c":1,"sh":9,"x":0,"y":6},{"c":6,"sh":2,"x":6,"y":3},{"c":4,"sh":0,"x":0,"y":5},{"c":4,"sh":2,"x":3,"y":6,"ax":2},{"c":4,"sh":2,"x":2,"y":2},{"c":4,"sh":0,"x":4,"y":7},{"c":1,"sh":2,"x":4,"y":1},{"c":0,"sh":0,"x":4,"y":0},{"c":6,"sh":0,"x":2,"y":5},{"c":6,"sh":0,"x":0,"y":4},{"c":1,"sh":0,"x":6,"y":5},{"c":0,"sh":0,"x":2,"y":7,"ax":1},{"c":3,"sh":0,"x":0,"y":2},{"c":4,"sh":0,"x":0,"y":7},{"c":1,"sh":0,"x":1,"y":2},{"c":6,"sh":0,"x":5,"y":0},{"c":3,"sh":0,"x":2,"y":0},{"c":6,"sh":0,"x":3,"y":5},{"c":0,"sh":1,"x":5,"y":7,"ax":1},{"c":4,"sh":0,"x":2,"y":4},{"c":0,"sh":0,"x":4,"y":6}],"opt":32,"moves":35,"relocs":4,"id":"1vk71xb"},{"tier":"hard","w":6,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"L","p":2,"n":2,"c":4},{"s":"R","p":5,"n":2,"c":3},{"s":"T","p":4,"n":2,"c":1},{"s":"B","p":3,"n":3,"c":5}],"blocks":[{"c":4,"sh":9,"x":0,"y":6},{"c":5,"sh":7,"x":4,"y":6},{"c":3,"sh":6,"x":2,"y":0},{"c":1,"sh":9,"x":4,"y":3,"ice":5},{"c":3,"sh":3,"x":0,"y":3},{"c":3,"sh":11,"x":2,"y":6},{"c":6,"sh":6,"x":4,"y":4},{"c":1,"sh":2,"x":0,"y":1},{"c":5,"sh":1,"x":0,"y":0,"ice":2},{"c":4,"sh":5,"x":4,"y":1,"ice":5},{"c":6,"sh":1,"x":1,"y":4},{"c":3,"sh":1,"x":1,"y":2},{"c":4,"sh":6,"x":0,"y":4},{"c":3,"sh":0,"x":3,"y":5},{"c":1,"sh":0,"x":4,"y":0}],"opt":20,"moves":23,"relocs":5,"id":"1yb21ad"},{"tier":"hard","w":6,"h":8,"walls":[],"gates":[{"s":"T","p":1,"n":1,"c":7},{"s":"R","p":0,"n":3,"c":9},{"s":"L","p":3,"n":2,"c":3},{"s":"T","p":3,"n":3,"c":2},{"s":"B","p":2,"n":2,"c":8},{"s":"R","p":5,"n":3,"c":8}],"blocks":[{"c":3,"sh":1,"x":4,"y":2},{"c":9,"sh":3,"x":2,"y":4},{"c":8,"sh":8,"x":0,"y":5},{"c":8,"sh":8,"x":3,"y":0},{"c":9,"sh":11,"x":0,"y":1},{"c":3,"sh":7,"x":2,"y":6},{"c":2,"sh":2,"x":2,"y":2},{"c":9,"sh":7,"x":1,"y":5},{"c":8,"sh":0,"x":3,"y":2},{"c":3,"sh":0,"x":3,"y":3},{"c":9,"sh":0,"x":5,"y":3},{"c":3,"sh":7,"x":0,"y":3},{"c":3,"sh":1,"x":0,"y":7},{"c":2,"sh":7,"x":4,"y":0,"ax":2},{"c":2,"sh":5,"x":4,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":3,"sh":0,"x":4,"y":3,"ax":1}],"opt":22,"moves":25,"relocs":5,"id":"1g34woq"},{"tier":"hard","w":7,"h":8,"walls":[30,11,33],"gates":[{"s":"T","p":4,"n":1,"c":2},{"s":"L","p":2,"n":2,"c":3},{"s":"R","p":5,"n":3,"c":9},{"s":"B","p":3,"n":2,"c":7},{"s":"L","p":5,"n":1,"c":7},{"s":"T","p":1,"n":1,"c":4},{"s":"R","p":0,"n":3,"c":6}],"blocks":[{"c":7,"sh":5,"x":5,"y":5},{"c":3,"sh":9,"x":5,"y":1},{"c":7,"sh":1,"x":2,"y":2},{"c":6,"sh":6,"x":1,"y":0},{"c":7,"sh":4,"x":0,"y":5,"ice":3},{"c":3,"sh":1,"x":4,"y":0},{"c":7,"sh":7,"x":3,"y":2,"ax":2},{"c":6,"sh":1,"x":0,"y":2},{"c":7,"sh":5,"x":3,"y":5},{"c":3,"sh":8,"x":0,"y":3},{"c":9,"sh":9,"x":1,"y":6},{"c":9,"sh":0,"x":2,"y":3},{"c":7,"sh":9,"x":2,"y":0},{"c":9,"sh":1,"x":3,"y":4},{"c":4,"sh":0,"x":5,"y":2},{"c":4,"sh":0,"x":0,"y":0},{"c":9,"sh":0,"x":1,"y":4},{"c":6,"sh":1,"x":4,"y":7},{"c":9,"sh":0,"x":0,"y":1},{"c":4,"sh":0,"x":1,"y":7},{"c":2,"sh":0,"x":3,"y":7}],"opt":26,"moves":29,"relocs":5,"id":"n41d3k"},{"tier":"hard","w":7,"h":9,"walls":[25],"gates":[{"s":"B","p":4,"n":3,"c":0},{"s":"T","p":2,"n":3,"c":0},{"s":"L","p":6,"n":3,"c":9},{"s":"L","p":3,"n":1,"c":4},{"s":"R","p":2,"n":1,"c":1},{"s":"T","p":0,"n":1,"c":1},{"s":"R","p":6,"n":3,"c":3}],"blocks":[{"c":0,"sh":10,"x":2,"y":3},{"c":3,"sh":2,"x":6,"y":1,"ice":3},{"c":9,"sh":3,"x":4,"y":5},{"c":9,"sh":10,"x":0,"y":5},{"c":9,"sh":5,"x":1,"y":0},{"c":3,"sh":9,"x":0,"y":4},{"c":9,"sh":6,"x":5,"y":2},{"c":4,"sh":3,"x":0,"y":2},{"c":4,"sh":0,"x":5,"y":1},{"c":0,"sh":9,"x":5,"y":6},{"c":9,"sh":7,"x":1,"y":7},{"c":9,"sh":0,"x":4,"y":4},{"c":4,"sh":0,"x":6,"y":4},{"c":9,"sh":3,"x":4,"y":8},{"c":3,"sh":3,"x":4,"y":0},{"c":3,"sh":2,"x":3,"y":2},{"c":1,"sh":0,"x":3,"y":7},{"c":1,"sh":0,"x":3,"y":4},{"c":4,"sh":0,"x":4,"y":1},{"c":3,"sh":3,"x":2,"y":6,"ax":1},{"c":0,"sh":0,"x":4,"y":7,"ax":2},{"c":3,"sh":0,"x":5,"y":4,"ice":5},{"c":0,"sh":1,"x":0,"y":3}],"opt":28,"moves":31,"relocs":5,"id":"1nflcnu"},{"tier":"hard","w":7,"h":8,"walls":[18,44,10],"gates":[{"s":"B","p":0,"n":2,"c":0},{"s":"R","p":4,"n":2,"c":7},{"s":"L","p":5,"n":2,"c":6},{"s":"T","p":4,"n":3,"c":6},{"s":"R","p":2,"n":1,"c":5},{"s":"T","p":0,"n":1,"c":3},{"s":"B","p":3,"n":2,"c":3}],"blocks":[{"c":7,"sh":0,"x":6,"y":2},{"c":7,"sh":2,"x":5,"y":1},{"c":3,"sh":2,"x":6,"y":3},{"c":6,"sh":7,"x":0,"y":0},{"c":6,"sh":12,"x":1,"y":2},{"c":6,"sh":3,"x":4,"y":0,"ax":2},{"c":7,"sh":7,"x":3,"y":4,"ax":1},{"c":6,"sh":11,"x":2,"y":3},{"c":6,"sh":3,"x":1,"y":7},{"c":6,"sh":10,"x":5,"y":3},{"c":6,"sh":11,"x":3,"y":6},{"c":7,"sh":1,"x":0,"y":6},{"c":7,"sh":1,"x":1,"y":5},{"c":6,"sh":0,"x":0,"y":4},{"c":6,"sh":7,"x":5,"y":6},{"c":3,"sh":0,"x":2,"y":1},{"c":7,"sh":0,"x":0,"y":7},{"c":3,"sh":0,"x":4,"y":1},{"c":5,"sh":0,"x":1,"y":4,"ice":3}],"opt":26,"moves":29,"relocs":7,"id":"1a7uekg"},{"tier":"hard","w":6,"h":9,"walls":[],"gates":[{"s":"R","p":2,"n":3,"c":9},{"s":"B","p":0,"n":3,"c":3},{"s":"T","p":0,"n":2,"c":3},{"s":"T","p":3,"n":3,"c":1},{"s":"L","p":0,"n":3,"c":4},{"s":"R","p":6,"n":3,"c":6},{"s":"L","p":4,"n":2,"c":5}],"blocks":[{"c":9,"sh":10,"x":1,"y":4,"ice":3},{"c":9,"sh":12,"x":1,"y":2},{"c":9,"sh":6,"x":4,"y":0},{"c":5,"sh":0,"x":4,"y":6},{"c":4,"sh":7,"x":4,"y":7},{"c":6,"sh":2,"x":0,"y":2},{"c":6,"sh":3,"x":0,"y":8},{"c":6,"sh":11,"x":2,"y":5},{"c":1,"sh":0,"x":2,"y":7},{"c":6,"sh":8,"x":3,"y":7},{"c":1,"sh":4,"x":0,"y":5},{"c":1,"sh":0,"x":0,"y":0},{"c":6,"sh":9,"x":1,"y":0},{"c":1,"sh":0,"x":0,"y":4},{"c":4,"sh":1,"x":4,"y":2},{"c":1,"sh":1,"x":2,"y":3},{"c":1,"sh":1,"x":0,"y":1},{"c":6,"sh":4,"x":5,"y":4}],"opt":26,"moves":29,"relocs":8,"id":"g1xcc3"},{"tier":"hard","w":6,"h":8,"walls":[32],"gates":[{"s":"L","p":3,"n":3,"c":8},{"s":"R","p":0,"n":3,"c":3},{"s":"B","p":1,"n":2,"c":6},{"s":"T","p":4,"n":2,"c":6},{"s":"B","p":5,"n":1,"c":4},{"s":"T","p":1,"n":1,"c":4},{"s":"R","p":4,"n":3,"c":7},{"s":"L","p":7,"n":1,"c":0}],"blocks":[{"c":3,"sh":3,"x":0,"y":2},{"c":6,"sh":2,"x":1,"y":0},{"c":4,"sh":2,"x":3,"y":5},{"c":3,"sh":1,"x":3,"y":2},{"c":3,"sh":2,"x":3,"y":3},{"c":6,"sh":6,"x":4,"y":6},{"c":7,"sh":5,"x":0,"y":3},{"c":3,"sh":5,"x":4,"y":3},{"c":0,"sh":0,"x":0,"y":5},{"c":8,"sh":11,"x":2,"y":0},{"c":0,"sh":3,"x":0,"y":7},{"c":0,"sh":1,"x":4,"y":5},{"c":7,"sh":1,"x":0,"y":6,"ice":3},{"c":4,"sh":0,"x":2,"y":3},{"c":6,"sh":9,"x":4,"y":1},{"c":4,"sh":2,"x":0,"y":0},{"c":7,"sh":0,"x":1,"y":5}],"opt":27,"moves":30,"relocs":10,"id":"1skpl1u"},{"tier":"superhard","w":7,"h":9,"walls":[52,11],"gates":[{"s":"T","p":0,"n":2,"c":3},{"s":"L","p":3,"n":3,"c":7},{"s":"B","p":3,"n":2,"c":6},{"s":"T","p":5,"n":1,"c":2},{"s":"L","p":8,"n":1,"c":0},{"s":"B","p":0,"n":2,"c":1}],"blocks":[{"c":7,"sh":14,"x":0,"y":5},{"c":1,"sh":5,"x":1,"y":7},{"c":1,"sh":16,"x":0,"y":0},{"c":6,"sh":4,"x":3,"y":2},{"c":3,"sh":2,"x":3,"y":0},{"c":7,"sh":4,"x":2,"y":0},{"c":7,"sh":14,"x":4,"y":2},{"c":0,"sh":1,"x":3,"y":8,"ax":1},{"c":0,"sh":3,"x":4,"y":0},{"c":7,"sh":5,"x":5,"y":7},{"c":6,"sh":2,"x":2,"y":4,"ice":3},{"c":6,"sh":2,"x":1,"y":3},{"c":2,"sh":0,"x":4,"y":4,"ice":2},{"c":1,"sh":2,"x":6,"y":5},{"c":7,"sh":15,"x":3,"y":5},{"c":7,"sh":2,"x":0,"y":3,"ax":1},{"c":3,"sh":0,"x":0,"y":8},{"c":1,"sh":0,"x":5,"y":4}],"opt":24,"moves":25,"relocs":6,"time":186,"id":"1i8d95q"},{"tier":"superhard","w":7,"h":9,"walls":[17,25],"gates":[{"s":"B","p":4,"n":1,"c":7},{"s":"T","p":0,"n":3,"c":7},{"s":"T","p":4,"n":3,"c":2},{"s":"B","p":1,"n":2,"c":0},{"s":"R","p":1,"n":2,"c":1},{"s":"L","p":8,"n":1,"c":8},{"s":"R","p":5,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":5}],"blocks":[{"c":0,"sh":6,"x":0,"y":6,"ice":5},{"c":7,"sh":0,"x":4,"y":0},{"c":7,"sh":12,"x":0,"y":2},{"c":4,"sh":5,"x":4,"y":5},{"c":1,"sh":15,"x":4,"y":7},{"c":1,"sh":7,"x":2,"y":5},{"c":2,"sh":8,"x":2,"y":0,"ice":4},{"c":2,"sh":3,"x":1,"y":8},{"c":1,"sh":12,"x":4,"y":1},{"c":7,"sh":5,"x":0,"y":0,"ax":2},{"c":1,"sh":7,"x":1,"y":4},{"c":7,"sh":2,"x":0,"y":4},{"c":4,"sh":3,"x":4,"y":4},{"c":0,"sh":9,"x":5,"y":2},{"c":1,"sh":2,"x":1,"y":3},{"c":7,"sh":2,"x":6,"y":5},{"c":5,"sh":0,"x":6,"y":0},{"c":7,"sh":0,"x":1,"y":6},{"c":1,"sh":2,"x":3,"y":3}],"opt":25,"moves":26,"relocs":6,"time":193,"id":"r2a46z"},{"tier":"superhard","w":7,"h":9,"walls":[29,16,46],"gates":[{"s":"R","p":7,"n":2,"c":9},{"s":"L","p":4,"n":1,"c":5},{"s":"L","p":0,"n":2,"c":5},{"s":"R","p":0,"n":1,"c":3},{"s":"T","p":4,"n":3,"c":0},{"s":"B","p":0,"n":3,"c":0},{"s":"B","p":4,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":6},{"s":"T","p":0,"n":3,"c":7}],"blocks":[{"c":0,"sh":12,"x":1,"y":0},{"c":9,"sh":1,"x":5,"y":6,"ice":4},{"c":3,"sh":3,"x":2,"y":3},{"c":5,"sh":7,"x":5,"y":4},{"c":4,"sh":7,"x":2,"y":5},{"c":5,"sh":5,"x":0,"y":6},{"c":7,"sh":5,"x":4,"y":7},{"c":0,"sh":8,"x":5,"y":1,"ax":2},{"c":0,"sh":2,"x":0,"y":1,"ax":2},{"c":9,"sh":0,"x":6,"y":2},{"c":7,"sh":5,"x":2,"y":7},{"c":7,"sh":1,"x":3,"y":2,"ice":3},{"c":0,"sh":0,"x":6,"y":8},{"c":7,"sh":7,"x":1,"y":4},{"c":0,"sh":2,"x":1,"y":2},{"c":7,"sh":0,"x":3,"y":4},{"c":0,"sh":2,"x":4,"y":4,"ice":4},{"c":9,"sh":2,"x":0,"y":4},{"c":7,"sh":1,"x":5,"y":3},{"c":5,"sh":3,"x":4,"y":0,"ax":1}],"opt":26,"moves":27,"relocs":6,"time":200,"id":"mk1odr"},{"tier":"superhard","w":7,"h":9,"walls":[17,51,46,30],"gates":[{"s":"T","p":0,"n":1,"c":5},{"s":"T","p":5,"n":1,"c":0},{"s":"R","p":6,"n":2,"c":0},{"s":"L","p":3,"n":3,"c":3},{"s":"L","p":0,"n":1,"c":6},{"s":"B","p":3,"n":2,"c":8},{"s":"L","p":7,"n":2,"c":8},{"s":"B","p":0,"n":2,"c":7},{"s":"R","p":1,"n":2,"c":9},{"s":"T","p":2,"n":1,"c":1}],"blocks":[{"c":3,"sh":1,"x":3,"y":7},{"c":9,"sh":6,"x":0,"y":5},{"c":3,"sh":10,"x":0,"y":0},{"c":8,"sh":7,"x":4,"y":7,"ice":4},{"c":3,"sh":3,"x":1,"y":0},{"c":0,"sh":1,"x":5,"y":4},{"c":6,"sh":3,"x":4,"y":3},{"c":7,"sh":1,"x":1,"y":5},{"c":9,"sh":7,"x":4,"y":1},{"c":3,"sh":11,"x":4,"y":5},{"c":3,"sh":3,"x":2,"y":1,"ice":2},{"c":3,"sh":7,"x":2,"y":5,"ice":2},{"c":3,"sh":0,"x":6,"y":1},{"c":8,"sh":0,"x":6,"y":6},{"c":8,"sh":1,"x":0,"y":8},{"c":8,"sh":1,"x":4,"y":0},{"c":5,"sh":0,"x":6,"y":0},{"c":3,"sh":1,"x":1,"y":3},{"c":1,"sh":0,"x":1,"y":1},{"c":3,"sh":1,"x":0,"y":7},{"c":1,"sh":0,"x":6,"y":2},{"c":1,"sh":2,"x":3,"y":3},{"c":8,"sh":0,"x":4,"y":4}],"opt":29,"moves":30,"relocs":6,"time":221,"id":"u2q0sq"},{"tier":"superhard","w":7,"h":9,"walls":[18,32,30],"gates":[{"s":"T","p":4,"n":1,"c":0},{"s":"R","p":6,"n":1,"c":4},{"s":"T","p":0,"n":1,"c":4},{"s":"B","p":1,"n":3,"c":7},{"s":"L","p":0,"n":1,"c":5},{"s":"R","p":1,"n":1,"c":8},{"s":"L","p":4,"n":3,"c":1}],"blocks":[{"c":7,"sh":7,"x":4,"y":7},{"c":7,"sh":6,"x":0,"y":4},{"c":1,"sh":5,"x":2,"y":5,"ax":1},{"c":0,"sh":0,"x":6,"y":8},{"c":1,"sh":11,"x":2,"y":7},{"c":7,"sh":8,"x":0,"y":1},{"c":7,"sh":5,"x":5,"y":0,"ice":2},{"c":8,"sh":0,"x":0,"y":8},{"c":1,"sh":8,"x":4,"y":5},{"c":4,"sh":4,"x":6,"y":3},{"c":7,"sh":6,"x":0,"y":6},{"c":1,"sh":7,"x":4,"y":2},{"c":1,"sh":10,"x":2,"y":1},{"c":7,"sh":1,"x":1,"y":8,"ax":2},{"c":8,"sh":1,"x":1,"y":0},{"c":1,"sh":9,"x":0,"y":3},{"c":5,"sh":0,"x":5,"y":6},{"c":7,"sh":2,"x":3,"y":0,"ax":2},{"c":7,"sh":0,"x":3,"y":4,"ax":2},{"c":0,"sh":0,"x":1,"y":6},{"c":1,"sh":0,"x":0,"y":0},{"c":4,"sh":0,"x":6,"y":2},{"c":7,"sh":0,"x":4,"y":0}],"opt":29,"moves":30,"relocs":6,"time":221,"id":"set6l1"},{"tier":"superhard","w":7,"h":10,"walls":[22,51,10,59],"gates":[{"s":"T","p":6,"n":1,"c":8},{"s":"R","p":7,"n":1,"c":9},{"s":"T","p":0,"n":1,"c":9},{"s":"T","p":2,"n":2,"c":2},{"s":"L","p":7,"n":2,"c":2},{"s":"L","p":5,"n":1,"c":4},{"s":"R","p":0,"n":2,"c":0},{"s":"B","p":2,"n":3,"c":3},{"s":"R","p":3,"n":2,"c":7}],"blocks":[{"c":0,"sh":11,"x":3,"y":0},{"c":3,"sh":6,"x":2,"y":8},{"c":9,"sh":3,"x":3,"y":7,"ax":1},{"c":7,"sh":2,"x":5,"y":1},{"c":7,"sh":14,"x":4,"y":5,"ice":5},{"c":3,"sh":7,"x":0,"y":7},{"c":2,"sh":0,"x":1,"y":5},{"c":7,"sh":5,"x":5,"y":8},{"c":8,"sh":0,"x":6,"y":0},{"c":0,"sh":1,"x":0,"y":6},{"c":8,"sh":4,"x":2,"y":3},{"c":0,"sh":6,"x":3,"y":3},{"c":9,"sh":4,"x":2,"y":0},{"c":0,"sh":6,"x":0,"y":3},{"c":7,"sh":1,"x":2,"y":6},{"c":0,"sh":1,"x":0,"y":9},{"c":3,"sh":6,"x":0,"y":0},{"c":7,"sh":0,"x":6,"y":1},{"c":7,"sh":7,"x":5,"y":2},{"c":9,"sh":2,"x":4,"y":8},{"c":3,"sh":1,"x":5,"y":4},{"c":3,"sh":0,"x":4,"y":3},{"c":3,"sh":0,"x":4,"y":6,"ax":2},{"c":0,"sh":0,"x":6,"y":5},{"c":2,"sh":0,"x":3,"y":5}],"opt":31,"moves":32,"relocs":6,"time":235,"id":"19jc5lz"},{"tier":"superhard","w":7,"h":10,"walls":[30],"gates":[{"s":"B","p":2,"n":2,"c":5},{"s":"R","p":1,"n":1,"c":8},{"s":"T","p":2,"n":1,"c":1},{"s":"R","p":4,"n":3,"c":6},{"s":"B","p":5,"n":2,"c":7},{"s":"L","p":9,"n":1,"c":7},{"s":"R","p":9,"n":1,"c":4}],"blocks":[{"c":1,"sh":2,"x":4,"y":4},{"c":6,"sh":6,"x":2,"y":8},{"c":5,"sh":7,"x":4,"y":8},{"c":5,"sh":9,"x":3,"y":6},{"c":5,"sh":5,"x":0,"y":4},{"c":7,"sh":2,"x":6,"y":5},{"c":7,"sh":3,"x":2,"y":3,"ice":3},{"c":7,"sh":4,"x":0,"y":1},{"c":6,"sh":7,"x":5,"y":3},{"c":7,"sh":7,"x":1,"y":1},{"c":5,"sh":7,"x":1,"y":6},{"c":7,"sh":4,"x":5,"y":5},{"c":8,"sh":0,"x":5,"y":1},{"c":7,"sh":2,"x":3,"y":4},{"c":6,"sh":2,"x":6,"y":7},{"c":5,"sh":0,"x":2,"y":0},{"c":6,"sh":0,"x":0,"y":7},{"c":4,"sh":0,"x":1,"y":3},{"c":1,"sh":2,"x":1,"y":8},{"c":6,"sh":7,"x":5,"y":1},{"c":6,"sh":2,"x":4,"y":1},{"c":4,"sh":3,"x":3,"y":0},{"c":5,"sh":0,"x":1,"y":1},{"c":4,"sh":1,"x":0,"y":6},{"c":1,"sh":2,"x":0,"y":8},{"c":1,"sh":2,"x":3,"y":1}],"opt":32,"moves":33,"relocs":6,"time":242,"id":"7hqgai"},{"tier":"superhard","w":7,"h":10,"walls":[9,61],"gates":[{"s":"T","p":3,"n":3,"c":3},{"s":"B","p":4,"n":3,"c":0},{"s":"L","p":8,"n":1,"c":6},{"s":"R","p":6,"n":3,"c":9},{"s":"T","p":0,"n":1,"c":7},{"s":"R","p":3,"n":2,"c":8}],"blocks":[{"c":3,"sh":5,"x":2,"y":8},{"c":3,"sh":9,"x":0,"y":3},{"c":0,"sh":2,"x":3,"y":2},{"c":3,"sh":2,"x":4,"y":3},{"c":3,"sh":12,"x":1,"y":5},{"c":0,"sh":7,"x":5,"y":8},{"c":3,"sh":10,"x":5,"y":5},{"c":7,"sh":0,"x":4,"y":8,"ice":4},{"c":9,"sh":14,"x":0,"y":1},{"c":9,"sh":2,"x":1,"y":8},{"c":6,"sh":1,"x":2,"y":6},{"c":3,"sh":9,"x":3,"y":1,"ax":2,"ice":3},{"c":9,"sh":7,"x":5,"y":2},{"c":3,"sh":8,"x":5,"y":1},{"c":9,"sh":4,"x":0,"y":4},{"c":3,"sh":1,"x":1,"y":0},{"c":9,"sh":0,"x":0,"y":7,"ax":1},{"c":3,"sh":1,"x":2,"y":4},{"c":9,"sh":0,"x":0,"y":8},{"c":7,"sh":2,"x":6,"y":4},{"c":0,"sh":0,"x":5,"y":0},{"c":6,"sh":0,"x":3,"y":7},{"c":3,"sh":0,"x":4,"y":9},{"c":9,"sh":2,"x":4,"y":6,"ax":1},{"c":8,"sh":0,"x":0,"y":0},{"c":8,"sh":0,"x":1,"y":7,"ice":4},{"c":9,"sh":0,"x":0,"y":2}],"opt":33,"moves":34,"relocs":6,"time":249,"id":"gzcn7z"},{"tier":"superhard","w":7,"h":10,"walls":[11,30],"gates":[{"s":"T","p":4,"n":3,"c":4},{"s":"B","p":3,"n":3,"c":4},{"s":"R","p":6,"n":2,"c":8},{"s":"L","p":2,"n":1,"c":1},{"s":"T","p":0,"n":2,"c":1},{"s":"R","p":0,"n":3,"c":9},{"s":"R","p":9,"n":1,"c":9},{"s":"L","p":4,"n":3,"c":2},{"s":"R","p":4,"n":1,"c":0},{"s":"L","p":9,"n":1,"c":3},{"s":"B","p":1,"n":1,"c":6},{"s":"L","p":0,"n":1,"c":6}],"blocks":[{"c":2,"sh":10,"x":4,"y":2},{"c":4,"sh":13,"x":4,"y":7,"ax":2},{"c":4,"sh":2,"x":0,"y":3},{"c":8,"sh":6,"x":3,"y":5},{"c":4,"sh":6,"x":2,"y":7,"ice":4},{"c":9,"sh":4,"x":2,"y":0},{"c":8,"sh":2,"x":6,"y":3},{"c":6,"sh":2,"x":2,"y":5,"ice":2},{"c":1,"sh":3,"x":4,"y":5},{"c":4,"sh":9,"x":0,"y":6},{"c":4,"sh":6,"x":1,"y":8},{"c":4,"sh":4,"x":5,"y":1,"ax":2},{"c":8,"sh":2,"x":6,"y":8},{"c":8,"sh":7,"x":2,"y":2},{"c":8,"sh":2,"x":0,"y":8},{"c":2,"sh":5,"x":0,"y":0},{"c":2,"sh":9,"x":3,"y":7,"ice":5},{"c":0,"sh":0,"x":1,"y":3},{"c":6,"sh":0,"x":6,"y":1},{"c":4,"sh":1,"x":0,"y":5,"ice":2},{"c":4,"sh":0,"x":3,"y":1,"ax":2},{"c":3,"sh":0,"x":1,"y":4},{"c":0,"sh":0,"x":1,"y":2},{"c":3,"sh":0,"x":6,"y":0},{"c":3,"sh":0,"x":0,"y":2},{"c":0,"sh":0,"x":3,"y":4},{"c":9,"sh":0,"x":0,"y":7}],"opt":33,"moves":34,"relocs":6,"time":249,"id":"nq739g"},{"tier":"superhard","w":7,"h":10,"walls":[47,43,51],"gates":[{"s":"L","p":2,"n":3,"c":5},{"s":"R","p":2,"n":1,"c":2},{"s":"R","p":9,"n":1,"c":2},{"s":"B","p":2,"n":3,"c":1},{"s":"T","p":0,"n":3,"c":1},{"s":"R","p":6,"n":1,"c":8},{"s":"T","p":5,"n":2,"c":9},{"s":"L","p":9,"n":1,"c":7}],"blocks":[{"c":9,"sh":10,"x":3,"y":7},{"c":9,"sh":16,"x":5,"y":2,"ax":2},{"c":1,"sh":5,"x":0,"y":8},{"c":5,"sh":16,"x":1,"y":1},{"c":1,"sh":12,"x":3,"y":1},{"c":5,"sh":0,"x":3,"y":4},{"c":9,"sh":8,"x":1,"y":4},{"c":1,"sh":0,"x":0,"y":6,"ax":2},{"c":1,"sh":13,"x":3,"y":3},{"c":5,"sh":4,"x":4,"y":6},{"c":9,"sh":1,"x":1,"y":0},{"c":9,"sh":0,"x":6,"y":9},{"c":9,"sh":4,"x":6,"y":6},{"c":9,"sh":2,"x":6,"y":0,"ax":2},{"c":1,"sh":4,"x":0,"y":0,"ax":2},{"c":1,"sh":0,"x":5,"y":5},{"c":1,"sh":0,"x":4,"y":0,"ice":2},{"c":5,"sh":0,"x":2,"y":5,"ice":5},{"c":1,"sh":2,"x":0,"y":4},{"c":2,"sh":0,"x":5,"y":8},{"c":1,"sh":0,"x":4,"y":2},{"c":9,"sh":0,"x":3,"y":3},{"c":2,"sh":0,"x":5,"y":9},{"c":7,"sh":0,"x":0,"y":3},{"c":7,"sh":0,"x":6,"y":5},{"c":2,"sh":0,"x":3,"y":0},{"c":2,"sh":0,"x":2,"y":6},{"c":2,"sh":0,"x":3,"y":6,"ice":5}],"opt":34,"moves":35,"relocs":6,"time":256,"id":"azem9l"},{"tier":"superhard","w":7,"h":9,"walls":[36,51,38,32],"gates":[{"s":"T","p":2,"n":1,"c":2},{"s":"B","p":5,"n":2,"c":2},{"s":"R","p":0,"n":2,"c":5},{"s":"L","p":2,"n":1,"c":5},{"s":"R","p":7,"n":2,"c":0},{"s":"T","p":5,"n":2,"c":7},{"s":"B","p":0,"n":2,"c":8},{"s":"R","p":3,"n":1,"c":4},{"s":"L","p":5,"n":2,"c":3}],"blocks":[{"c":2,"sh":4,"x":0,"y":3},{"c":2,"sh":6,"x":1,"y":0},{"c":4,"sh":0,"x":4,"y":7},{"c":7,"sh":5,"x":5,"y":4},{"c":2,"sh":1,"x":1,"y":2},{"c":2,"sh":2,"x":1,"y":3},{"c":7,"sh":13,"x":3,"y":1},{"c":5,"sh":0,"x":3,"y":0},{"c":7,"sh":6,"x":5,"y":6,"ax":2},{"c":4,"sh":0,"x":3,"y":4},{"c":0,"sh":0,"x":6,"y":1},{"c":7,"sh":8,"x":3,"y":6},{"c":7,"sh":10,"x":5,"y":1,"ax":2},{"c":0,"sh":0,"x":4,"y":5,"ice":4},{"c":2,"sh":1,"x":3,"y":8},{"c":2,"sh":0,"x":5,"y":0},{"c":8,"sh":2,"x":0,"y":1},{"c":8,"sh":0,"x":0,"y":0,"ax":2},{"c":5,"sh":0,"x":6,"y":2},{"c":5,"sh":0,"x":1,"y":6,"ice":5},{"c":2,"sh":0,"x":0,"y":6},{"c":2,"sh":0,"x":1,"y":7},{"c":2,"sh":2,"x":0,"y":7,"ice":2},{"c":0,"sh":0,"x":2,"y":6},{"c":4,"sh":1,"x":5,"y":8},{"c":3,"sh":2,"x":3,"y":1,"ice":2},{"c":2,"sh":0,"x":2,"y":4},{"c":5,"sh":0,"x":2,"y":0},{"c":2,"sh":0,"x":2,"y":5,"ax":2}],"opt":35,"moves":36,"relocs":6,"time":263,"id":"vy1hod"},{"tier":"superhard","w":7,"h":9,"walls":[25,31,39,8],"gates":[{"s":"R","p":3,"n":2,"c":2},{"s":"L","p":0,"n":3,"c":0},{"s":"B","p":0,"n":2,"c":0},{"s":"L","p":5,"n":3,"c":4},{"s":"B","p":4,"n":3,"c":5},{"s":"T","p":2,"n":2,"c":3},{"s":"R","p":6,"n":2,"c":3},{"s":"R","p":0,"n":1,"c":6},{"s":"T","p":5,"n":2,"c":7}],"blocks":[{"c":0,"sh":2,"x":0,"y":6},{"c":0,"sh":16,"x":0,"y":3},{"c":2,"sh":8,"x":5,"y":2},{"c":3,"sh":2,"x":6,"y":7},{"c":7,"sh":2,"x":2,"y":1},{"c":5,"sh":4,"x":5,"y":4},{"c":6,"sh":1,"x":0,"y":0,"ax":1},{"c":5,"sh":0,"x":4,"y":6},{"c":7,"sh":1,"x":3,"y":8},{"c":0,"sh":9,"x":3,"y":0},{"c":3,"sh":8,"x":2,"y":3},{"c":5,"sh":13,"x":1,"y":5},{"c":5,"sh":3,"x":3,"y":7},{"c":0,"sh":2,"x":6,"y":0},{"c":5,"sh":4,"x":6,"y":4},{"c":4,"sh":0,"x":1,"y":6,"ax":1,"ice":2},{"c":7,"sh":0,"x":1,"y":8},{"c":3,"sh":2,"x":5,"y":0},{"c":2,"sh":0,"x":0,"y":8},{"c":5,"sh":0,"x":1,"y":2},{"c":2,"sh":6,"x":3,"y":1},{"c":7,"sh":0,"x":0,"y":2,"ice":2},{"c":7,"sh":2,"x":3,"y":5},{"c":3,"sh":0,"x":6,"y":3}],"opt":31,"moves":32,"relocs":7,"time":228,"id":"hj5mj4"},{"tier":"superhard","w":7,"h":10,"walls":[26,11],"gates":[{"s":"R","p":7,"n":3,"c":0},{"s":"T","p":2,"n":1,"c":0},{"s":"B","p":2,"n":3,"c":5},{"s":"L","p":5,"n":1,"c":2},{"s":"R","p":3,"n":2,"c":6},{"s":"R","p":1,"n":1,"c":8},{"s":"T","p":4,"n":1,"c":1}],"blocks":[{"c":0,"sh":15,"x":1,"y":8},{"c":5,"sh":7,"x":0,"y":1,"ice":3},{"c":0,"sh":6,"x":4,"y":3},{"c":0,"sh":1,"x":4,"y":7,"ax":1},{"c":5,"sh":10,"x":2,"y":0},{"c":0,"sh":14,"x":0,"y":4},{"c":5,"sh":1,"x":4,"y":9},{"c":5,"sh":4,"x":6,"y":6},{"c":5,"sh":1,"x":4,"y":6},{"c":0,"sh":0,"x":5,"y":2},{"c":5,"sh":1,"x":2,"y":6},{"c":2,"sh":1,"x":5,"y":5},{"c":2,"sh":0,"x":3,"y":0,"ice":4},{"c":5,"sh":2,"x":6,"y":3},{"c":6,"sh":1,"x":0,"y":3},{"c":0,"sh":4,"x":0,"y":5},{"c":0,"sh":2,"x":0,"y":0},{"c":5,"sh":0,"x":1,"y":0},{"c":5,"sh":9,"x":2,"y":4,"ax":2},{"c":5,"sh":3,"x":4,"y":0},{"c":6,"sh":2,"x":0,"y":8},{"c":0,"sh":0,"x":2,"y":7,"ice":3},{"c":2,"sh":0,"x":2,"y":3},{"c":5,"sh":0,"x":5,"y":1},{"c":1,"sh":0,"x":1,"y":6,"ice":5},{"c":0,"sh":0,"x":6,"y":2},{"c":2,"sh":0,"x":6,"y":1}],"opt":34,"moves":35,"relocs":7,"time":249,"id":"uw78kw"},{"tier":"superhard","w":7,"h":9,"walls":[30],"gates":[{"s":"T","p":4,"n":1,"c":6},{"s":"R","p":2,"n":3,"c":4},{"s":"B","p":3,"n":3,"c":5},{"s":"R","p":6,"n":1,"c":2},{"s":"R","p":8,"n":1,"c":2},{"s":"L","p":1,"n":3,"c":1},{"s":"L","p":6,"n":3,"c":9},{"s":"T","p":1,"n":2,"c":9},{"s":"T","p":6,"n":1,"c":8}],"blocks":[{"c":4,"sh":1,"x":1,"y":3},{"c":4,"sh":0,"x":3,"y":8,"ice":4},{"c":5,"sh":5,"x":5,"y":3,"ice":2},{"c":9,"sh":6,"x":0,"y":3},{"c":8,"sh":2,"x":5,"y":6},{"c":4,"sh":1,"x":3,"y":6},{"c":2,"sh":3,"x":2,"y":2},{"c":5,"sh":5,"x":2,"y":0},{"c":1,"sh":6,"x":0,"y":0},{"c":1,"sh":0,"x":4,"y":5},{"c":4,"sh":8,"x":0,"y":6},{"c":4,"sh":14,"x":4,"y":1},{"c":4,"sh":6,"x":1,"y":7},{"c":2,"sh":1,"x":4,"y":8},{"c":9,"sh":1,"x":4,"y":0},{"c":8,"sh":2,"x":2,"y":6},{"c":5,"sh":0,"x":3,"y":7},{"c":9,"sh":0,"x":1,"y":0},{"c":4,"sh":1,"x":3,"y":4,"ice":2},{"c":6,"sh":0,"x":1,"y":5},{"c":4,"sh":2,"x":6,"y":6,"ice":3},{"c":4,"sh":0,"x":6,"y":1},{"c":5,"sh":0,"x":0,"y":2},{"c":1,"sh":1,"x":2,"y":5},{"c":8,"sh":0,"x":3,"y":3},{"c":6,"sh":0,"x":4,"y":7},{"c":5,"sh":0,"x":6,"y":8}],"opt":34,"moves":35,"relocs":7,"time":249,"id":"1lm2fd5"},{"tier":"superhard","w":7,"h":10,"walls":[47,43],"gates":[{"s":"R","p":9,"n":1,"c":6},{"s":"R","p":6,"n":1,"c":6},{"s":"L","p":7,"n":3,"c":1},{"s":"B","p":3,"n":3,"c":1},{"s":"T","p":4,"n":3,"c":2},{"s":"R","p":1,"n":3,"c":5},{"s":"L","p":2,"n":3,"c":3},{"s":"B","p":0,"n":1,"c":3},{"s":"T","p":1,"n":2,"c":4}],"blocks":[{"c":4,"sh":5,"x":4,"y":4},{"c":2,"sh":16,"x":3,"y":1},{"c":2,"sh":2,"x":0,"y":3},{"c":3,"sh":11,"x":1,"y":5},{"c":3,"sh":5,"x":2,"y":8},{"c":1,"sh":5,"x":0,"y":0},{"c":4,"sh":1,"x":5,"y":3},{"c":4,"sh":2,"x":5,"y":8},{"c":5,"sh":9,"x":1,"y":3},{"c":5,"sh":9,"x":3,"y":7},{"c":2,"sh":2,"x":6,"y":1},{"c":3,"sh":9,"x":0,"y":8},{"c":5,"sh":0,"x":5,"y":1,"ax":1},{"c":4,"sh":2,"x":0,"y":6},{"c":1,"sh":0,"x":5,"y":7,"ax":1},{"c":3,"sh":0,"x":2,"y":2},{"c":6,"sh":0,"x":1,"y":4},{"c":2,"sh":8,"x":2,"y":0},{"c":2,"sh":4,"x":6,"y":6},{"c":5,"sh":0,"x":0,"y":5},{"c":2,"sh":2,"x":6,"y":4,"ax":2},{"c":1,"sh":0,"x":5,"y":2},{"c":2,"sh":3,"x":4,"y":0,"ax":2},{"c":1,"sh":0,"x":4,"y":9,"ax":1},{"c":1,"sh":0,"x":3,"y":4},{"c":1,"sh":0,"x":0,"y":2},{"c":4,"sh":0,"x":0,"y":9,"ice":2}],"opt":34,"moves":35,"relocs":7,"time":249,"id":"m1usu3"},{"tier":"superhard","w":7,"h":9,"walls":[51],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"T","p":1,"n":1,"c":5},{"s":"L","p":1,"n":1,"c":3},{"s":"B","p":1,"n":1,"c":3},{"s":"L","p":5,"n":1,"c":9},{"s":"T","p":5,"n":2,"c":4},{"s":"R","p":6,"n":2,"c":2},{"s":"B","p":3,"n":1,"c":7}],"blocks":[{"c":9,"sh":1,"x":4,"y":2},{"c":4,"sh":10,"x":1,"y":3},{"c":2,"sh":11,"x":3,"y":3},{"c":6,"sh":1,"x":2,"y":8},{"c":6,"sh":16,"x":0,"y":6},{"c":6,"sh":3,"x":1,"y":2},{"c":4,"sh":9,"x":4,"y":6},{"c":6,"sh":6,"x":5,"y":4},{"c":4,"sh":2,"x":4,"y":0},{"c":6,"sh":8,"x":0,"y":0},{"c":5,"sh":4,"x":0,"y":3},{"c":4,"sh":4,"x":6,"y":6},{"c":5,"sh":2,"x":6,"y":1},{"c":4,"sh":6,"x":2,"y":0},{"c":2,"sh":1,"x":3,"y":5},{"c":3,"sh":0,"x":5,"y":8},{"c":5,"sh":2,"x":2,"y":3,"ice":4},{"c":6,"sh":2,"x":6,"y":3},{"c":2,"sh":0,"x":6,"y":0},{"c":9,"sh":0,"x":5,"y":0},{"c":6,"sh":0,"x":3,"y":7},{"c":6,"sh":0,"x":3,"y":6}],"opt":32,"moves":33,"relocs":10,"time":214,"id":"1xfano6"},{"tier":"superhard","w":7,"h":9,"walls":[8],"gates":[{"s":"B","p":4,"n":3,"c":4},{"s":"L","p":7,"n":1,"c":3},{"s":"L","p":4,"n":2,"c":6},{"s":"T","p":1,"n":3,"c":6},{"s":"B","p":0,"n":2,"c":1},{"s":"R","p":3,"n":2,"c":0},{"s":"R","p":6,"n":3,"c":7},{"s":"R","p":0,"n":2,"c":2}],"blocks":[{"c":0,"sh":1,"x":0,"y":7},{"c":6,"sh":8,"x":5,"y":6},{"c":6,"sh":14,"x":2,"y":7},{"c":6,"sh":7,"x":0,"y":5},{"c":6,"sh":9,"x":3,"y":6},{"c":7,"sh":11,"x":4,"y":2},{"c":7,"sh":12,"x":1,"y":2},{"c":3,"sh":3,"x":2,"y":5,"ice":3},{"c":7,"sh":1,"x":5,"y":5},{"c":0,"sh":3,"x":4,"y":4},{"c":4,"sh":7,"x":4,"y":0,"ax":2},{"c":7,"sh":14,"x":1,"y":0},{"c":1,"sh":0,"x":4,"y":0},{"c":6,"sh":3,"x":0,"y":4,"ice":4},{"c":4,"sh":9,"x":2,"y":3},{"c":6,"sh":0,"x":1,"y":8},{"c":0,"sh":0,"x":6,"y":8},{"c":0,"sh":0,"x":4,"y":3,"ax":1},{"c":7,"sh":0,"x":5,"y":8,"ice":4,"ax":1},{"c":6,"sh":0,"x":0,"y":5},{"c":4,"sh":0,"x":6,"y":1},{"c":6,"sh":0,"x":3,"y":0},{"c":1,"sh":0,"x":0,"y":3}],"opt":33,"moves":34,"relocs":10,"time":221,"id":"qs4ht"},{"tier":"superhard","w":7,"h":10,"walls":[43,26],"gates":[{"s":"T","p":5,"n":1,"c":0},{"s":"B","p":4,"n":3,"c":2},{"s":"B","p":1,"n":2,"c":8},{"s":"L","p":8,"n":2,"c":4},{"s":"R","p":4,"n":3,"c":6},{"s":"R","p":1,"n":1,"c":3}],"blocks":[{"c":6,"sh":16,"x":1,"y":7},{"c":2,"sh":10,"x":0,"y":3},{"c":2,"sh":3,"x":3,"y":6},{"c":2,"sh":5,"x":1,"y":2,"ice":3},{"c":6,"sh":2,"x":3,"y":8},{"c":3,"sh":3,"x":1,"y":0},{"c":6,"sh":7,"x":4,"y":4},{"c":3,"sh":0,"x":4,"y":0},{"c":2,"sh":13,"x":5,"y":7,"ax":2,"ice":3},{"c":2,"sh":9,"x":4,"y":7,"ax":2},{"c":4,"sh":3,"x":1,"y":1,"ice":5},{"c":4,"sh":7,"x":2,"y":4},{"c":6,"sh":1,"x":4,"y":1},{"c":8,"sh":2,"x":0,"y":6},{"c":2,"sh":0,"x":3,"y":7},{"c":6,"sh":11,"x":3,"y":2},{"c":6,"sh":0,"x":6,"y":6},{"c":0,"sh":0,"x":5,"y":0},{"c":6,"sh":4,"x":6,"y":0},{"c":6,"sh":0,"x":4,"y":9},{"c":6,"sh":0,"x":4,"y":4},{"c":0,"sh":4,"x":6,"y":3},{"c":8,"sh":1,"x":1,"y":4}],"opt":33,"moves":34,"relocs":10,"time":221,"id":"quin8s"},{"tier":"superhard","w":7,"h":10,"walls":[58,52,36],"gates":[{"s":"L","p":0,"n":3,"c":2},{"s":"T","p":4,"n":3,"c":2},{"s":"L","p":9,"n":1,"c":4},{"s":"B","p":2,"n":1,"c":9},{"s":"L","p":6,"n":1,"c":6},{"s":"R","p":0,"n":2,"c":5},{"s":"T","p":0,"n":3,"c":7},{"s":"R","p":7,"n":1,"c":8},{"s":"R","p":9,"n":1,"c":8}],"blocks":[{"c":2,"sh":10,"x":1,"y":1},{"c":7,"sh":7,"x":0,"y":8},{"c":5,"sh":15,"x":3,"y":4},{"c":2,"sh":3,"x":0,"y":4},{"c":5,"sh":1,"x":4,"y":1},{"c":5,"sh":5,"x":4,"y":8,"ice":4},{"c":2,"sh":8,"x":0,"y":7},{"c":7,"sh":2,"x":2,"y":6},{"c":5,"sh":8,"x":4,"y":2},{"c":5,"sh":2,"x":0,"y":5},{"c":5,"sh":1,"x":5,"y":6},{"c":5,"sh":3,"x":4,"y":7},{"c":7,"sh":8,"x":0,"y":0},{"c":2,"sh":13,"x":5,"y":1},{"c":2,"sh":0,"x":2,"y":1},{"c":8,"sh":0,"x":4,"y":6},{"c":5,"sh":11,"x":2,"y":0,"ax":1,"ice":3},{"c":4,"sh":1,"x":2,"y":2},{"c":4,"sh":0,"x":2,"y":9},{"c":8,"sh":0,"x":2,"y":5},{"c":7,"sh":0,"x":3,"y":3},{"c":7,"sh":0,"x":6,"y":9},{"c":2,"sh":0,"x":6,"y":4},{"c":6,"sh":0,"x":6,"y":5},{"c":5,"sh":0,"x":0,"y":2,"ice":2},{"c":5,"sh":0,"x":0,"y":3},{"c":2,"sh":0,"x":5,"y":0}],"opt":37,"moves":38,"relocs":10,"time":249,"id":"15ikqgt"},{"tier":"superhard","w":7,"h":9,"walls":[37,31],"gates":[{"s":"L","p":3,"n":2,"c":3},{"s":"R","p":6,"n":1,"c":3},{"s":"L","p":0,"n":1,"c":5},{"s":"T","p":5,"n":2,"c":7},{"s":"B","p":1,"n":3,"c":7},{"s":"R","p":8,"n":1,"c":1},{"s":"R","p":2,"n":3,"c":2},{"s":"T","p":2,"n":2,"c":2},{"s":"L","p":6,"n":3,"c":6}],"blocks":[{"c":7,"sh":5,"x":4,"y":4},{"c":2,"sh":8,"x":5,"y":6},{"c":7,"sh":13,"x":3,"y":0},{"c":7,"sh":8,"x":1,"y":7,"ax":2},{"c":7,"sh":4,"x":5,"y":1,"ax":2},{"c":2,"sh":11,"x":0,"y":3},{"c":7,"sh":10,"x":0,"y":0},{"c":5,"sh":0,"x":3,"y":3},{"c":7,"sh":16,"x":3,"y":6},{"c":2,"sh":7,"x":0,"y":5,"ice":4},{"c":6,"sh":1,"x":1,"y":0},{"c":7,"sh":2,"x":0,"y":4},{"c":5,"sh":0,"x":6,"y":1,"ice":5},{"c":2,"sh":7,"x":5,"y":7},{"c":7,"sh":2,"x":2,"y":1},{"c":7,"sh":2,"x":6,"y":3},{"c":2,"sh":2,"x":3,"y":0,"ice":4,"ax":2},{"c":2,"sh":0,"x":6,"y":0},{"c":7,"sh":0,"x":1,"y":1,"ice":4},{"c":2,"sh":0,"x":2,"y":8},{"c":5,"sh":0,"x":3,"y":5},{"c":6,"sh":0,"x":2,"y":6,"ax":1},{"c":3,"sh":0,"x":5,"y":0}],"opt":34,"moves":35,"relocs":11,"time":221,"id":"1udtb9s"}];
+window.CS_LEGACY = ["8dpsug","1ism09t","1p9l2p","exxkr9","w91am","5jnztm","vdlqau","1y9wghb","1pvr6aq","g5ylh9","1i8rytw","1n97sfa","yg0p2c","6xpdf6","nmybbn","12vlugj","1xr5plj","1ioxpoh","1wqishj","3cyl6j","v53rrp","1hq1e4d","1idyx01","zjn7aa","1v58r3m","1mbluvd","18cx2pr","j4urm5","36z196","xja3w2","rrzwcs","148sofp","1vk71xb","1yb21ad","1g34woq","n41d3k","1nflcnu","1a7uekg","g1xcc3","1skpl1u","1i8d95q","r2a46z","mk1odr","u2q0sq","set6l1","19jc5lz","7hqgai","gzcn7z","nq739g","azem9l","vy1hod","hj5mj4","uw78kw","1lm2fd5","m1usu3","1xfano6","qs4ht","quin8s","15ikqgt","1udtb9s"];</script>
 <script>
 (function () {
 'use strict';
-const LEVELS = window.CS_LEVELS;
+const LEVELS = window.CS_LEVELS, LEGACY = window.CS_LEGACY || [];
 const COLORS = ['#F2545B','#FF8A3D','#FFC93C','#9BD43A','#23B06A','#1FB5B0','#39A0F0','#4F63E8','#9A5BE8','#E9509F'];
-const TIER = { medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead' },
-               hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, locked arrows, ice' },
-               superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock' } };
+const TIERS = ['easy', 'medium', 'hard', 'superhard'];
+const TIER = {
+  easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
+  medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
+  hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
+  superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
+  unstoppable: { name: 'Unstoppable', color: '#E9509F' },
+};
 const $ = id => document.getElementById(id);
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f)); return `rgb(${c})`; };
+const fmtTime = t => Math.floor(Math.max(0, t) / 60) + ':' + String(Math.max(0, t) % 60).padStart(2, '0');
 
-// ---------- storage (best effort) ----------
-const store = {
-  get(k, d) { try { const v = localStorage.getItem('colorshred:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('colorshred:' + k, JSON.stringify(v)); } catch (e) {} }
-};
-let stars = store.get('stars', {});      // levelIndex -> 1..3
-let soundOn = store.get('sound', true);
+// ---------- unlockable board colors: one per campaign level ----------
+const ADJ = ['Neon','Velvet','Electric','Frosted','Molten','Midnight','Solar','Lunar','Wild','Royal','Cosmic','Candy','Dusty','Glacier','Ember','Jungle','Pixel','Retro','Silky','Thunder'];
+const NOUN = ['Lagoon','Mango','Orchid','Comet','Coral','Mint','Plum','Saffron','Cobalt','Rose'];
+function prize(li) {
+  const h = Math.round((li * 137.508 + 200) % 360), s = 55 + (li * 29) % 30, l = 48 + (li * 13) % 14;
+  return { id: li, name: ADJ[li % 20] + ' ' + NOUN[Math.floor(li / 20) % 10], h, s, l, css: `hsl(${h} ${s}% ${l}%)` };
+}
+
+// ---------- save data ----------
+const KEY = 'colorshred:save2';
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, seenRules: false, best: 0, bestCleared: 0, current: null }; }
+let S = freshSave();
+(function loadSave() {
+  try {
+    const raw = lsGet(KEY);
+    if (raw) { S = Object.assign(freshSave(), JSON.parse(raw)); return; }
+    // migrate the first version's progress (stars were keyed by level position)
+    const old = JSON.parse(lsGet('colorshred:stars') || '{}');
+    for (const k in old) if (LEGACY[k]) S.stars[LEGACY[k]] = old[k];
+    const snd = lsGet('colorshred:sound'); if (snd != null) S.sound = JSON.parse(snd);
+    if (lsGet('colorshred:seenRules')) S.seenRules = true;
+    S.coins += Object.values(S.stars).reduce((a, n) => a + 20 + n * 5, 0);
+  } catch (e) { S = freshSave(); }
+})();
+function save() { lsSet(KEY, JSON.stringify(S)); }
+const idx = {}; LEVELS.forEach((l, i) => { idx[l.id] = i; });
+const cleared = i => !!S.stars[LEVELS[i].id];
+const unlocked = i => i === 0 || cleared(i - 1) || cleared(i);
+const nextLevel = () => { for (let i = 0; i < LEVELS.length; i++) if (!cleared(i)) return i; return -1; };
+const allDone = () => nextLevel() === -1;
+
+function setCoins(n, bump) {
+  S.coins = Math.max(0, n); save();
+  document.querySelectorAll('.coinNum').forEach(e => { e.textContent = S.coins; });
+  if (bump) document.querySelectorAll('.coins').forEach(e => { e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); });
+}
+function applyTheme() {
+  const r = document.documentElement.style;
+  if (S.equipped == null) { ['--frame-hi', '--frame-lo', '--glow'].forEach(p => r.removeProperty(p)); return; }
+  const p = prize(S.equipped);
+  r.setProperty('--frame-hi', `hsl(${p.h} ${Math.round(p.s * .55)}% 34%)`);
+  r.setProperty('--frame-lo', `hsl(${p.h} ${Math.round(p.s * .5)}% 24%)`);
+  r.setProperty('--glow', `hsl(${p.h} 45% 22%)`);
+}
 
 // ---------- sound ----------
 let actx = null;
 function sfx(kind) {
-  if (!soundOn) return;
+  if (!S.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     const t = actx.currentTime;
-    if (kind === 'shred') {
-      const len = 0.35, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
+    if (kind === 'shred' || kind === 'blast') {
+      const len = kind === 'blast' ? 0.5 : 0.35, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (0.6 + 0.4 * Math.sin(i / 40));
       const src = actx.createBufferSource(); src.buffer = buf;
-      const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.8;
+      const f = actx.createBiquadFilter(); f.type = kind === 'blast' ? 'lowpass' : 'bandpass'; f.frequency.value = kind === 'blast' ? 600 : 1400; f.Q.value = 0.8;
       const g = actx.createGain(); g.gain.value = 0.35;
       src.connect(f).connect(g).connect(actx.destination); src.start(t);
     } else {
       const o = actx.createOscillator(), g = actx.createGain();
-      const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15] };
+      const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
       const [fr, dur, vol] = map[kind];
-      o.type = kind === 'win' ? 'triangle' : 'square'; o.frequency.setValueAtTime(fr, t);
-      if (kind === 'win') o.frequency.exponentialRampToValueAtTime(fr * 2, t + dur);
+      o.type = kind === 'win' || kind === 'coin' || kind === 'magic' ? 'triangle' : 'square'; o.frequency.setValueAtTime(fr, t);
+      if (kind === 'win' || kind === 'magic') o.frequency.exponentialRampToValueAtTime(fr * 2, t + dur);
+      if (kind === 'coin') o.frequency.setValueAtTime(fr * 1.5, t + 0.07);
       if (kind === 'fail') o.frequency.exponentialRampToValueAtTime(fr / 2, t + dur);
       g.gain.setValueAtTime(vol * 0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
       o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
@@ -455,118 +762,183 @@ function sfx(kind) {
   } catch (e) {}
 }
 
-// ---------- home ----------
-function tierRange(t) { const idx = []; LEVELS.forEach((l, i) => { if (l.tier === t) idx.push(i); }); return idx; }
-function unlocked(i) {
-  const t = LEVELS[i].tier, r = tierRange(t), k = r.indexOf(i);
-  return k === 0 || !!stars[r[k - 1]] || !!stars[i];
-}
-function renderHome() {
+// ---------- screens ----------
+const SCREENS = ['welcome', 'levels', 'colors', 'play'];
+function show(name) { SCREENS.forEach(s => { $(s).hidden = s !== name; }); hideOverlay(); }
+function renderWelcome() {
   const logo = $('logo');
-  if (!logo.dataset.done) {
-    logo.innerHTML = [...'ColorShred'].map((ch, i) => `<span style="color:${COLORS[[0,1,2,3,4,5,6,7,8,9][i]]}">${ch}</span>`).join('');
-    logo.dataset.done = 1;
+  if (!logo.dataset.done) { logo.innerHTML = [...'ColorShred'].map((ch, i) => `<span style="color:${COLORS[i]}">${ch}</span>`).join(''); logo.dataset.done = 1; }
+  const fl = $('floaters');
+  if (!fl.children.length) for (let k = 0; k < 14; k++) {
+    const d = document.createElement('div'); d.className = 'floater'; const sz = 26 + (k * 37) % 40;
+    Object.assign(d.style, { left: (k * 53) % 100 + '%', width: sz + 'px', height: sz + 'px', background: COLORS[k % 10],
+      animationDuration: 9 + (k * 7) % 9 + 's', animationDelay: -(k * 1.7) + 's' });
+    fl.appendChild(d);
   }
+  const n = nextLevel(), cur = S.current && idx[S.current.id];
+  $('playSub').textContent = cur != null ? `Continue level ${cur + 1}` : n < 0 ? 'All levels complete' : `Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
+  $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
+  setCoins(S.coins);
+  show('welcome');
+}
+const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+function renderLevels() {
   const wrap = $('tiers'); wrap.innerHTML = '';
-  for (const t of ['medium', 'hard', 'superhard']) {
-    const r = tierRange(t); if (!r.length) continue;
-    const done = r.filter(i => stars[i]).length;
+  if (allDone()) wrap.insertAdjacentHTML('beforeend', `<div class="banner"><b>Complete!</b><br><span class="note">You beat all ${LEVELS.length} levels. Unstoppable mode is waiting.</span></div>`);
+  const next = nextLevel();
+  for (const t of TIERS) {
+    const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
+    if (!r.length) continue;
+    const done = r.filter(cleared).length;
     const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
-    sec.innerHTML = `<div class="tier-head"><h2 style="color:${TIER[t].color}">${TIER[t].name}</h2><small>${TIER[t].blurb}<br>${done}/${r.length} cleared</small></div><div class="grid"></div>`;
+    sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
     const g = sec.querySelector('.grid');
-    let nextMarked = false;
-    r.forEach(i => {
+    for (const i of r) {
       const b = document.createElement('button'); b.className = 'lv';
-      const ok = unlocked(i);
-      if (stars[i]) b.classList.add('done');
-      else if (ok && !nextMarked) { b.classList.add('next'); nextMarked = true; }
-      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${i + 1}, locked`); }
-      b.innerHTML = `${i + 1}<span class="st">${'★'.repeat(stars[i] || 0)}</span>`;
-      b.onclick = () => startLevel(i);
+      const ok = unlocked(i), st = S.stars[LEVELS[i].id] || 0;
+      if (st) b.classList.add('done');
+      if (i === next) b.classList.add('next');
+      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${i + 1}, locked`); b.innerHTML = LOCK; }
+      else b.innerHTML = `${i + 1}<span class="st">${'★'.repeat(st)}</span>`;
+      b.onclick = () => startCampaign(i, false);
       g.appendChild(b);
-    });
+    }
     wrap.appendChild(sec);
   }
-  $('soundBtn').textContent = 'Sound: ' + (soundOn ? 'on' : 'off');
+  show('levels');
+  const nb = wrap.querySelector('.lv.next'); if (nb) nb.scrollIntoView({ block: 'center' });
+}
+function renderColors() {
+  const w = $('swatches'); w.innerHTML = '';
+  const have = Object.keys(S.stars).length;
+  $('colorsNote').textContent = `Every level you beat unlocks a new color (${Math.min(have, LEVELS.length)}/${LEVELS.length}). Tap one to paint your board with it.`;
+  const def = document.createElement('button'); def.className = 'sw' + (S.equipped == null ? ' on' : '');
+  def.innerHTML = `<i style="background:#3a3d63"></i>Classic Steel`; def.onclick = () => { S.equipped = null; save(); applyTheme(); renderColors(); };
+  w.appendChild(def);
+  LEVELS.forEach((l, i) => {
+    const p = prize(i), ok = cleared(i);
+    const b = document.createElement('button'); b.className = 'sw' + (ok ? '' : ' locked') + (S.equipped === i ? ' on' : '');
+    b.innerHTML = `<i style="background:${p.css}"></i>${ok ? p.name : 'Level ' + (i + 1)}`;
+    if (!ok) b.disabled = true; else b.onclick = () => { S.equipped = i; save(); applyTheme(); renderColors(); sfx('coin'); };
+    w.appendChild(b);
+  });
+  show('colors');
 }
 
 // ---------- game state ----------
-let L = null, li = 0, ctx = null, pos = [], moves = 0, hist = [], timeLeft = 0, timer = null, over = false, busy = false;
-let cs = 40, gt = 20, els = [], hintEls = [];
+const PU = {
+  recolor: { name: 'Recolor', cost: 40, limit: 1, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.8-.4-1.2.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="11" cy="7" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8" r="1.2" fill="currentColor"/></svg>' },
+  blast: { name: 'Blast', cost: 60, limit: 1, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2 6 6-2-3 5 5 3-6 1 1 6-5-4-5 4 1-6-6-1 5-3-3-5 6 2z"/></svg>' },
+  thaw: { name: 'Thaw', cost: 25, limit: 2, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>' },
+  extra: { name: '+5 moves', cost: 30, limit: 2, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
+};
+let mode = 'campaign', li = 0, W = null, ctx = null, pos = [], moves = 0, extraMoves = 0, hist = [], timeLeft = 0;
+let over = false, busy = false, used = {}, armed = null, cs = 40, gt = 20, els = [], hintEls = [];
+let U = null; // unstoppable run: {stage, cleared, earned, next, waiting}
+const timed = () => mode === 'unstoppable' || !!W.time;
 
-function startLevel(i) {
-  li = i; L = LEVELS[i];
-  ctx = CS.makeCtx(L); L.__ctx = ctx;
-  pos = ctx.blocks.map(b => b.y * L.w + b.x);
-  moves = 0; hist = []; over = false; busy = false;
-  timeLeft = L.time || 0;
-  $('home').hidden = true; $('play').hidden = false; hideOverlay();
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function rebuildCtx() { const f = ctx && ctx.field, fr = ctx && ctx.frame; ctx = CS.makeCtx(W); ctx.field = f; ctx.frame = fr; W.__ctx = ctx; }
+
+function startCampaign(i, resume) {
+  mode = 'campaign'; li = i; U = null;
+  W = clone(LEVELS[i]); ctx = null; rebuildCtx();
+  const cur = resume && S.current && S.current.id === W.id ? S.current : null;
+  pos = cur ? cur.pos.slice() : ctx.blocks.map(b => b.y * W.w + b.x);
+  if (cur) { cur.col.forEach((c, k) => { W.blocks[k].c = c; }); cur.ice.forEach((n, k) => { W.blocks[k].ice = n; }); rebuildCtx(); }
+  moves = cur ? cur.moves : 0; extraMoves = cur ? cur.extraMoves : 0; used = cur ? { ...cur.used } : {};
+  timeLeft = cur ? cur.timeLeft : (W.time || 0);
+  hist = []; over = false; busy = false; armed = null;
+  show('play');
   $('lvName').textContent = 'Level ' + (i + 1);
-  $('lvTier').textContent = TIER[L.tier].name; $('play').style.setProperty('--tc', TIER[L.tier].color);
-  $('timeStat').hidden = !L.time;
-  buildBoard(); updateHud();
-  clearInterval(timer);
-  if (L.time) timer = setInterval(tick, 1000);
-  if (!store.get('seenRules', false)) { showRules(); store.set('seenRules', true); }
+  $('lvTier').textContent = TIER[W.tier].name; $('play').style.setProperty('--tc', TIER[W.tier].color);
+  $('movesLabel').textContent = 'Moves left';
+  buildBoard(); updateHud(); saveCurrent();
+  if (!S.seenRules) { showRules(); S.seenRules = true; save(); }
 }
-function tick() {
-  if (over || !$('overlay').hidden) return;
+function saveCurrent() {
+  if (mode !== 'campaign' || over) return;
+  S.current = { id: W.id, pos: pos.slice(), col: W.blocks.map(b => b.c), ice: W.blocks.map(b => b.ice || 0), moves, extraMoves, used: { ...used }, timeLeft };
+  save();
+}
+
+// one shared clock for timed boards
+setInterval(() => {
+  if ($('play').hidden || over || !$('overlay').hidden || !W || !timed() || (U && U.waiting) || document.hidden) return;
   timeLeft--; updateHud();
-  if (timeLeft <= 0) lose("Time's up", 'The clock beat you this round.');
-}
+  if (mode === 'campaign' && timeLeft % 5 === 0) saveCurrent();
+  if (timeLeft <= 0) {
+    if (mode === 'unstoppable') endRun(); else lose("Time's up", 'The clock beat you this round.');
+  }
+}, 1000);
+
 function updateHud() {
-  const left = L.moves - moves;
-  $('movesLeft').textContent = left;
-  $('movesStat').classList.toggle('warn', left <= 2);
+  if (mode === 'unstoppable') { $('movesLeft').textContent = U.cleared; $('movesStat').classList.remove('warn'); }
+  else { const left = W.moves + extraMoves - moves; $('movesLeft').textContent = left; $('movesStat').classList.toggle('warn', left <= 2); }
   $('blocksLeft').textContent = pos.filter(p => p >= 0).length;
-  if (L.time) { $('timeLeft').textContent = Math.floor(timeLeft / 60) + ':' + String(Math.max(0, timeLeft) % 60).padStart(2, '0'); $('timeStat').classList.toggle('warn', timeLeft <= 15); }
+  $('timeStat').hidden = !timed();
+  if (timed()) { $('timeLeft').textContent = fmtTime(timeLeft); $('timeStat').classList.toggle('warn', timeLeft <= 15); }
   $('undoBtn').disabled = !hist.length;
   const removed = CS.removedCount(pos);
   ctx.blocks.forEach((b, i) => {
-    if (!b.ice || !els[i]) return;
-    const n = b.ice - removed;
-    els[i].querySelectorAll('.ice').forEach((ic, k) => { ic.style.opacity = n <= 0 ? 0 : 1; if (k === 0 && n > 0) ic.textContent = n; });
+    if (!els[i]) return;
+    const n = (b.ice || 0) - removed;
+    els[i].querySelectorAll('.ice').forEach((ic, k) => { ic.style.opacity = n <= 0 ? 0 : 1; if (k === 0) ic.textContent = n > 0 ? n : ''; });
   });
+  renderPowers();
+}
+function renderPowers() {
+  const box = $('powers'); box.innerHTML = '';
+  const anyFrozen = pos.some((p, i) => p >= 0 && CS.frozen(ctx, pos, i));
+  for (const k of Object.keys(PU)) {
+    const d = PU[k], left = d.limit - (used[k] || 0);
+    const name = k === 'extra' && timed() ? '+20 sec' : d.name;
+    const b = document.createElement('button'); b.className = 'pu' + (armed === k ? ' armed' : '');
+    b.disabled = over || left <= 0 || (S.coins < d.cost && armed !== k) || (k === 'thaw' && !anyFrozen && armed !== k);
+    b.innerHTML = `${d.icon}<span>${name}</span><span class="cost"><i class="coin"></i>${d.cost}</span><span class="left">${left}</span>`;
+    b.setAttribute('aria-label', `${name}, costs ${d.cost} coins, ${left} left this level`);
+    b.onclick = () => powerTap(k);
+    box.appendChild(b);
+  }
+  if (ctx && ctx.field) ctx.field.classList.toggle('arming', !!armed);
 }
 
 // ---------- board ----------
 const ARROW = d => ({ L: 'M15 5l-7 7 7 7', R: 'M9 5l7 7-7 7', T: 'M5 15l7-7 7 7', B: 'M5 9l7 7 7-7' })[d];
 function buildBoard() {
   const stage = $('stage'); stage.innerHTML = '';
-  const W = L.w, H = L.h;
+  $('timeStat').hidden = !timed(); renderPowers(); // settle the HUD first so the board gets the right space
+  const Wd = W.w, H = W.h;
   const sw = stage.clientWidth, sh = stage.clientHeight;
-  cs = Math.floor(Math.min(Math.min(sw, 560) / (W + 0.9), sh / (H + 0.9)));
+  cs = Math.max(16, Math.floor(Math.min(Math.min(sw, 560) / (Wd + 0.9), sh / (H + 0.9))));
   gt = Math.round(cs * 0.45);
   const frame = document.createElement('div'); frame.className = 'frame';
   frame.style.setProperty('--cs', cs + 'px');
-  frame.style.width = (W * cs + 2 * gt) + 'px'; frame.style.height = (H * cs + 2 * gt) + 'px';
+  frame.style.width = (Wd * cs + 2 * gt) + 'px'; frame.style.height = (H * cs + 2 * gt) + 'px';
   const field = document.createElement('div'); field.className = 'field';
-  Object.assign(field.style, { left: gt + 'px', top: gt + 'px', width: W * cs + 'px', height: H * cs + 'px' });
+  Object.assign(field.style, { left: gt + 'px', top: gt + 'px', width: Wd * cs + 'px', height: H * cs + 'px' });
   frame.appendChild(field);
-  for (const wi of L.walls) {
-    const d = document.createElement('div'); d.className = 'wall';
-    const pad = Math.round(cs * 0.06);
-    Object.assign(d.style, { left: (wi % W) * cs + pad + 'px', top: Math.floor(wi / W) * cs + pad + 'px', width: cs - 2 * pad + 'px', height: cs - 2 * pad + 'px' });
+  for (const wi of W.walls) {
+    const d = document.createElement('div'); d.className = 'wall'; const pad = Math.round(cs * 0.06);
+    Object.assign(d.style, { left: (wi % Wd) * cs + pad + 'px', top: Math.floor(wi / Wd) * cs + pad + 'px', width: cs - 2 * pad + 'px', height: cs - 2 * pad + 'px' });
     field.appendChild(d);
   }
-  L.gates.forEach((g, gi) => {
+  W.gates.forEach((g, gi) => {
     const d = document.createElement('div'); const vert = g.s === 'L' || g.s === 'R';
     d.className = 'gate ' + (vert ? 'v' : 'h'); d.style.setProperty('--gc', COLORS[g.c]); d.dataset.gi = gi;
     const inset = 3;
-    if (vert) Object.assign(d.style, { top: gt + g.p * cs + inset + 'px', height: g.n * cs - 2 * inset + 'px', width: gt - 4 + 'px', left: (g.s === 'L' ? 2 : gt + W * cs + 2) + 'px' });
+    if (vert) Object.assign(d.style, { top: gt + g.p * cs + inset + 'px', height: g.n * cs - 2 * inset + 'px', width: gt - 4 + 'px', left: (g.s === 'L' ? 2 : gt + Wd * cs + 2) + 'px' });
     else Object.assign(d.style, { left: gt + g.p * cs + inset + 'px', width: g.n * cs - 2 * inset + 'px', height: gt - 4 + 'px', top: (g.s === 'T' ? 2 : gt + H * cs + 2) + 'px' });
     d.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="${ARROW(g.s)}"/></svg>`;
     frame.appendChild(d);
   });
-  els = ctx.blocks.map((b, i) => {
-    const el = makeShape(b, false);
-    el.dataset.i = i;
-    field.appendChild(el);
-    return el;
-  });
   stage.appendChild(frame);
   ctx.field = field; ctx.frame = frame;
-  els.forEach((el, i) => { if (pos[i] < 0) el.remove(); else place(i, false); });
+  els = ctx.blocks.map((b, i) => {
+    if (pos[i] < 0) return null;
+    const el = makeShape(b, false); field.appendChild(el); return el;
+  });
+  els.forEach((el, i) => { if (el) place(i, false); });
   field.addEventListener('pointerdown', onDown);
 }
 function makeShape(b, ghost) {
@@ -584,16 +956,15 @@ function makeShape(b, ghost) {
       width: cs - (lf ? 0 : m) - (rt ? 0 : m) + 'px', height: cs - (up ? 0 : m) - (dn ? 0 : m) + 'px',
       borderRadius: `${!up && !lf ? r : 0}px ${!up && !rt ? r : 0}px ${!dn && !rt ? r : 0}px ${!dn && !lf ? r : 0}px`,
     });
-    const sh = [];
-    if (!dn) sh.push(`inset 0 ${-Math.round(cs * .09)}px 0 var(--bd)`);
-    if (!up) sh.push(`inset 0 ${Math.round(cs * .05)}px 0 #ffffff40`);
-    c.style.boxShadow = sh.join(',') || 'none';
+    const shd = [];
+    if (!dn) shd.push(`inset 0 ${-Math.round(cs * .09)}px 0 var(--bd)`);
+    if (!up) shd.push(`inset 0 ${Math.round(cs * .05)}px 0 #ffffff40`);
+    c.style.boxShadow = shd.join(',') || 'none';
     el.appendChild(c);
   }
   if (!ghost && b.ax) {
     const g = document.createElement('div'); g.className = 'glyph';
     Object.assign(g.style, { left: 0, top: 0, width: '100%', height: '100%' });
-    // place glyph on first cell for irregular shapes; centered for rectangles
     if (si.cells.length !== si.w * si.h) { const [x, y] = si.cells[0]; Object.assign(g.style, { left: x * cs + 'px', top: y * cs + 'px', width: cs + 'px', height: cs + 'px' }); }
     g.innerHTML = b.ax === 1
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>'
@@ -603,41 +974,43 @@ function makeShape(b, ghost) {
   if (!ghost && b.ice) {
     for (const [x, y] of si.cells) {
       const ic = document.createElement('div'); ic.className = 'ice';
-      Object.assign(ic.style, { inset: 'auto', left: x * cs + 2 + 'px', top: y * cs + 2 + 'px', width: cs - 4 + 'px', height: cs - 4 + 'px', borderRadius: Math.round(cs * .2) + 'px' });
-      if (x !== si.cells[0][0] || y !== si.cells[0][1]) ic.style.fontSize = 0;
+      Object.assign(ic.style, { left: x * cs + 2 + 'px', top: y * cs + 2 + 'px', width: cs - 4 + 'px', height: cs - 4 + 'px', borderRadius: Math.round(cs * .2) + 'px' });
       el.appendChild(ic);
     }
-    // keep one numbered ice label reachable for updateHud
   }
   return el;
 }
 function place(i, anim) {
   const el = els[i]; const a = pos[i];
   el.style.transition = anim === false ? 'none' : '';
-  el.style.transform = `translate(${(a % L.w) * cs}px, ${Math.floor(a / L.w) * cs}px)`;
+  el.style.transform = `translate(${(a % W.w) * cs}px, ${Math.floor(a / W.w) * cs}px)`;
   if (anim === false) { void el.offsetWidth; el.style.transition = ''; }
 }
-// exit sides available for block i at anchor a
-function exitSides(i, a) {
-  return [...CS.clearSides(ctx, CS.occupancy(ctx, pos), i, a)];
+function redrawBlock(i) {
+  const old = els[i]; const el = makeShape(ctx.blocks[i], false);
+  if (old) old.replaceWith(el); else ctx.field.appendChild(el);
+  els[i] = el; place(i, false);
 }
+function exitSides(i, a) { return [...CS.clearSides(ctx, CS.occupancy(ctx, pos), i, a)]; }
 
 // ---------- input ----------
 let drag = null;
 function blockAt(ev) {
   const r = ctx.field.getBoundingClientRect();
   const cx = Math.floor((ev.clientX - r.left) / cs), cy = Math.floor((ev.clientY - r.top) / cs);
-  if (cx < 0 || cy < 0 || cx >= L.w || cy >= L.h) return -1;
-  return CS.occupancy(ctx, pos)[cy * L.w + cx];
+  if (cx < 0 || cy < 0 || cx >= W.w || cy >= W.h) return -1;
+  return CS.occupancy(ctx, pos)[cy * W.w + cx];
 }
 function onDown(ev) {
   if (over || busy || drag) return;
-  const i = blockAt(ev); if (i < 0) return;
+  const i = blockAt(ev);
+  if (armed) { if (i >= 0) usePower(armed, i); return; }
+  if (i < 0) return;
   clearHint();
-  if (CS.frozen(ctx, pos, i)) { shake(i); sfx('bump'); toast(`Frozen. Shred ${ctx.blocks[i].ice - CS.removedCount(pos)} more block(s) to thaw it.`); return; }
+  if (CS.frozen(ctx, pos, i)) { shake(i); sfx('bump'); toast(`Frozen. Shred ${ctx.blocks[i].ice - CS.removedCount(pos)} more block(s) to thaw it, or use Thaw.`); return; }
   ev.preventDefault();
   ctx.field.setPointerCapture(ev.pointerId);
-  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i], cur: pos[i] };
+  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i] };
   els[i].classList.add('grab');
   ctx.field.addEventListener('pointermove', onMove);
   ctx.field.addEventListener('pointerup', onUp);
@@ -645,14 +1018,14 @@ function onDown(ev) {
 }
 function onMove(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
-  const i = drag.i, W = L.w, ax = ctx.blocks[i].ax;
-  const sx = drag.start % W, sy = Math.floor(drag.start / W);
+  const i = drag.i, Wd = W.w, ax = ctx.blocks[i].ax;
+  const sx = drag.start % Wd, sy = Math.floor(drag.start / Wd);
   let tx = sx + Math.round((ev.clientX - drag.sx) / cs), ty = sy + Math.round((ev.clientY - drag.sy) / cs);
   if (ax === 1) ty = sy; if (ax === 2) tx = sx;
   const occ = CS.occupancy(ctx, pos);
   let moved = false;
   for (let step = 0; step < 60; step++) {
-    const x = pos[i] % W, y = Math.floor(pos[i] / W);
+    const x = pos[i] % Wd, y = Math.floor(pos[i] / Wd);
     const ddx = tx - x, ddy = ty - y;
     if (!ddx && !ddy) break;
     const cand = [];
@@ -662,13 +1035,12 @@ function onMove(ev) {
     let ok = false;
     for (const [dx, dy] of cand) {
       const nx = x + dx, ny = y + dy, si = CS.shapeInfo[ctx.blocks[i].sh];
-      const outside = nx < 0 || ny < 0 || nx + si.w > W || ny + si.h > L.h;
-      if (outside) {
+      if (nx < 0 || ny < 0 || nx + si.w > Wd || ny + si.h > W.h) {
         const side = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : 'B';
         if (exitSides(i, pos[i]).includes(side)) { finishDrag(side); return; }
         continue;
       }
-      if (CS.fits(ctx, occ, i, nx, ny)) { pos[i] = ny * W + nx; ok = true; moved = true; break; }
+      if (CS.fits(ctx, occ, i, nx, ny)) { pos[i] = ny * Wd + nx; ok = true; moved = true; break; }
     }
     if (!ok) break;
   }
@@ -676,8 +1048,7 @@ function onMove(ev) {
 }
 function onUp(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
-  const sides = exitSides(drag.i, pos[drag.i]);
-  finishDrag(sides[0] || null);
+  finishDrag(exitSides(drag.i, pos[drag.i])[0] || null);
 }
 function finishDrag(exitSide) {
   const { i, start } = drag;
@@ -688,105 +1059,248 @@ function finishDrag(exitSide) {
   els[i].classList.remove('grab');
   drag = null;
   if (!exitSide && pos[i] === start) return;
-  hist.push({ pos: pos.slice(), moves, from: start, i });
-  hist[hist.length - 1].pos[i] = start;
+  const snap = pos.slice(); snap[i] = start;
+  hist.push({ pos: snap, moves, i });
   moves++;
   if (exitSide) shredBlock(i, exitSide);
-  else { updateHud(); checkEnd(); }
+  else { updateHud(); saveCurrent(); checkEnd(); }
 }
-
 function shredBlock(i, side) {
   busy = true;
   const el = els[i], a = pos[i], si = CS.shapeInfo[ctx.blocks[i].sh];
-  const x = a % L.w, y = Math.floor(a / L.w);
+  const x = a % W.w, y = Math.floor(a / W.w);
   const off = { L: [-(si.w + 0.3), 0], R: [si.w + 0.3, 0], T: [0, -(si.h + 0.3)], B: [0, si.h + 0.3] }[side];
   el.classList.add('exiting');
   el.style.transform = `translate(${(x + off[0]) * cs}px, ${(y + off[1]) * cs}px)`;
-  pos[i] = -1;
+  pos[i] = -1; els[i] = null;
   sfx('shred');
-  // which gate
-  const gi = L.gates.findIndex(g => g.c === ctx.blocks[i].c && g.s === side && (side === 'L' || side === 'R' ? (y >= g.p && y + si.h <= g.p + g.n) : (x >= g.p && x + si.w <= g.p + g.n)));
+  const gi = W.gates.findIndex(g => g.c === ctx.blocks[i].c && g.s === side && (side === 'L' || side === 'R' ? (y >= g.p && y + si.h <= g.p + g.n) : (x >= g.p && x + si.w <= g.p + g.n)));
   const gEl = ctx.frame.querySelector(`.gate[data-gi="${gi}"]`);
-  if (gEl) { gEl.classList.remove('pulse'); void gEl.offsetWidth; gEl.classList.add('pulse'); spawnShreds(gEl, side, COLORS[ctx.blocks[i].c]); }
-  setTimeout(() => { el.remove(); busy = false; updateHud(); checkEnd(); }, 300);
+  if (gEl) { gEl.classList.remove('pulse'); void gEl.offsetWidth; gEl.classList.add('pulse'); spawnShreds(gEl.offsetLeft, gEl.offsetTop, gEl.offsetWidth, gEl.offsetHeight, side, COLORS[ctx.blocks[i].c]); }
   updateHud();
+  setTimeout(() => { el.remove(); busy = false; updateHud(); saveCurrent(); checkEnd(); }, 300);
 }
-function spawnShreds(gEl, side, color) {
-  const fr = ctx.frame, gx = gEl.offsetLeft, gy = gEl.offsetTop, gw = gEl.offsetWidth, gh = gEl.offsetHeight;
-  const dir = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] }[side];
+function spawnShreds(gx, gy, gw, gh, side, color, count) {
+  const fr = ctx.frame;
+  const dir = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1], X: [0, 0] }[side];
   const vert = side === 'L' || side === 'R';
-  for (let k = 0; k < 16; k++) {
+  for (let k = 0; k < (count || 16); k++) {
     const s = document.createElement('div'); s.className = 'shred'; s.style.background = k % 4 ? color : '#ffffff';
     const along = Math.random();
-    const w = vert ? cs * 0.5 : 4, h = vert ? 4 : cs * 0.5;
+    const w = side === 'X' ? cs * 0.25 : vert ? cs * 0.5 : 4, h = side === 'X' ? cs * 0.25 : vert ? 4 : cs * 0.5;
     Object.assign(s.style, { width: w + 'px', height: h + 'px',
-      left: (vert ? gx + gw / 2 - w / 2 : gx + along * gw) + 'px', top: (vert ? gy + along * gh : gy + gh / 2 - h / 2) + 'px' });
+      left: (vert ? gx + gw / 2 - w / 2 : gx + along * gw) + 'px', top: (vert ? gy + along * gh : side === 'X' ? gy + Math.random() * gh : gy + gh / 2 - h / 2) + 'px' });
     fr.appendChild(s);
     const dist = cs * (0.8 + Math.random() * 1.4), spread = (Math.random() - 0.5) * cs * 1.2;
-    const tx = dir[0] * dist + (vert ? 0 : spread), ty = dir[1] * dist + (vert ? spread : 0);
+    let tx = dir[0] * dist + (vert ? 0 : spread), ty = dir[1] * dist + (vert ? spread : 0);
+    if (side === 'X') { const an = Math.random() * Math.PI * 2; tx = Math.cos(an) * dist; ty = Math.sin(an) * dist; }
     const anim = s.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 },
       { transform: `translate(${tx}px, ${ty}px) rotate(${(Math.random() - .5) * 540}deg)`, opacity: 0 }],
-      { duration: 500 + Math.random() * 400, delay: 120 + Math.random() * 120, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'both' });
+      { duration: 500 + Math.random() * 400, delay: side === 'X' ? 0 : 120 + Math.random() * 120, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'both' });
     anim.onfinish = () => s.remove();
   }
 }
-function shake(i) { const e = els[i]; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); }
+function shake(i) { const e = els[i]; if (!e) return; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); }
 
+// ---------- power-ups ----------
+function powerTap(k) {
+  if (over || busy || drag) return;
+  clearHint();
+  const d = PU[k];
+  if (armed === k) { armed = null; renderPowers(); toast('Cancelled.'); return; }
+  if (S.coins < d.cost) { toast(`You need ${d.cost} coins. Beat levels to earn more.`); return; }
+  if (k === 'extra') return usePower(k, -1);
+  armed = k; renderPowers();
+  toast({ recolor: 'Tap a block to change its color.', blast: 'Tap a block to blast it away.', thaw: 'Tap a frozen block to thaw it.' }[k]);
+}
+function spend(k) {
+  used[k] = (used[k] || 0) + 1; armed = null; hist = [];
+  setCoins(S.coins - PU[k].cost, true);
+}
+function usePower(k, i) {
+  if (k === 'thaw' && !CS.frozen(ctx, pos, i)) { toast('Pick a frozen block.'); return; }
+  if (k === 'recolor') {
+    const cur = ctx.blocks[i].c;
+    const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur);
+    armed = null; renderPowers();
+    showCard(`<h3>Recolor</h3><p>Pick a new color for this block. Costs ${PU.recolor.cost} coins.</p>
+      <div class="picks">${opts.map(c => `<button data-c="${c}" style="background:${COLORS[c]}" aria-label="Color ${c + 1}"></button>`).join('')}</div>
+      <button class="btn alt" id="pickCancel">Cancel</button>`);
+    $('card').querySelectorAll('.picks button').forEach(b => b.onclick = () => {
+      hideOverlay(); spend('recolor'); W.blocks[i].c = +b.dataset.c; rebuildCtx(); redrawBlock(i); sfx('magic');
+      updateHud(); saveCurrent();
+    });
+    $('pickCancel').onclick = hideOverlay;
+    return;
+  }
+  spend(k);
+  if (k === 'extra') {
+    if (timed()) { timeLeft += 20; toast('+20 seconds'); } else { extraMoves += 5; toast('+5 moves'); }
+    sfx('magic'); updateHud(); saveCurrent(); return;
+  }
+  if (k === 'thaw') { W.blocks[i].ice = 0; rebuildCtx(); redrawBlock(i); sfx('magic'); updateHud(); saveCurrent(); return; }
+  if (k === 'blast') {
+    busy = true; const el = els[i], a = pos[i], si = CS.shapeInfo[ctx.blocks[i].sh];
+    spawnShreds(gt + (a % W.w) * cs, gt + Math.floor(a / W.w) * cs, si.w * cs, si.h * cs, 'X', COLORS[ctx.blocks[i].c], 26);
+    el.classList.add('blasting'); el.style.transform += ' scale(.2)';
+    pos[i] = -1; els[i] = null; sfx('blast'); updateHud();
+    setTimeout(() => { el.remove(); busy = false; updateHud(); saveCurrent(); checkEnd(); }, 270);
+  }
+}
+
+// ---------- end of board ----------
 function checkEnd() {
   if (over) return;
-  const left = pos.filter(p => p >= 0).length;
-  if (!left) return win();
-  if (moves >= L.moves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
+  if (!pos.some(p => p >= 0)) return mode === 'unstoppable' ? unstoppableClear() : win();
+  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
 }
 function win() {
-  over = true; clearInterval(timer); sfx('win');
-  const extra = moves - L.opt;
-  const s = extra <= 0 ? 3 : extra <= (L.tier === 'medium' ? 2 : 1) ? 2 : 1;
-  stars[li] = Math.max(stars[li] || 0, s); store.set('stars', stars);
-  const next = li + 1 < LEVELS.length && LEVELS[li + 1].tier === L.tier ? li + 1 : nextTierStart();
-  showCard(`<div class="stars">${[1,2,3].map(k => `<span class="${k <= s ? 'on' : ''}">★</span>`).join('')}</div>
-    <h3>Shredded!</h3><p>${moves} moves. The best possible is ${L.opt}.</p>
-    ${next != null ? `<button class="btn" id="nextBtn">Next level</button>` : `<p>You cleared the last level.</p>`}
-    <button class="btn alt" id="replayBtn">Replay</button><button class="btn alt" id="menuBtn">Levels</button>`);
-  if (next != null) $('nextBtn').onclick = () => startLevel(next);
-  $('replayBtn').onclick = () => startLevel(li); $('menuBtn').onclick = goHome;
+  over = true; sfx('win'); clearHint();
+  const id = W.id, first = !S.stars[id], extra = moves - W.opt;
+  const s = extra <= 0 ? 3 : extra <= ({ easy: 3, medium: 2 }[W.tier] || 1) ? 2 : 1;
+  const prev = S.stars[id] || 0;
+  const coins = first ? TIER[W.tier].reward + s * 5 : Math.max(0, s - prev) * 5;
+  S.stars[id] = Math.max(prev, s); S.current = null;
+  setCoins(S.coins + coins, coins > 0); save();
+  const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
+  const finished = first && allDone();
+  showCard(`<div class="stars">${[1, 2, 3].map(k => `<span class="${k <= s ? 'on' : ''}">★</span>`).join('')}</div>
+    <h3>${finished ? 'All levels done!' : 'Shredded!'}</h3>
+    <p>${finished ? `You beat all ${LEVELS.length} levels. Unstoppable mode never ends.` : (Object.keys(used).length ? `${moves} moves, with power-ups.` : `${moves} moves. The best possible is ${W.opt}.`)}</p>
+    ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
+    ${first ? `<div class="unlock"><i style="background:${p.css}"></i><div>New color unlocked<b>${p.name}</b></div><button id="equipBtn">${S.equipped === li ? 'Equipped' : 'Use it'}</button></div>` : ''}
+    ${finished ? `<button class="btn" id="goUnst">Play Unstoppable</button>` : next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
+    <button class="btn alt" id="replayBtn">Replay</button><button class="btn alt" id="menuBtn">Menu</button>`);
+  if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
+  if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
+  if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
+  $('replayBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
 }
-function nextTierStart() { for (let k = li + 1; k < LEVELS.length; k++) if (LEVELS[k].tier !== L.tier) return k; return null; }
 function lose(title, msg) {
-  over = true; clearInterval(timer); sfx('fail');
-  showCard(`<h3>${title}</h3><p>${msg}</p><button class="btn" id="retryBtn">Try again</button>
-    ${hist.length ? '<button class="btn alt" id="undoLose">Undo last move</button>' : ''}<button class="btn alt" id="menuBtn">Levels</button>`);
-  $('retryBtn').onclick = () => startLevel(li); $('menuBtn').onclick = goHome;
-  const u = $('undoLose'); if (u) u.onclick = () => { if (title === "Time's up") timeLeft = Math.max(timeLeft, 15); over = false; hideOverlay(); undo(); if (L.time) { clearInterval(timer); timer = setInterval(tick, 1000); } };
+  over = true; sfx('fail'); clearHint(); S.current = null; save();
+  const outOfTime = title === "Time's up", canBuy = (used.extra || 0) < PU.extra.limit && S.coins >= PU.extra.cost;
+  showCard(`<h3>${title}</h3><p>${msg}</p>
+    ${canBuy ? `<button class="btn" id="buyMore"><span style="display:inline-flex;align-items:center;gap:8px">${outOfTime ? '+20 seconds' : '+5 moves'} for <i class="coin"></i>${PU.extra.cost}</span></button>` : ''}
+    <button class="btn ${canBuy ? 'alt' : ''}" id="retryBtn">Try again</button><button class="btn alt" id="menuBtn">Menu</button>`);
+  $('retryBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
+  if (canBuy) $('buyMore').onclick = () => { over = false; hideOverlay(); spend('extra'); if (outOfTime) timeLeft += 20; else extraMoves += 5; sfx('magic'); updateHud(); saveCurrent(); };
+}
+
+// ---------- Unstoppable ----------
+let worker = null, pending = {};
+function getWorker() {
+  if (worker !== null) return worker;
+  try {
+    const src = $('src-engine').textContent + '\n' + $('src-gen').textContent + `
+self.onmessage = e => { const { stage, seed } = e.data;
+  for (let k = 0; k < 8; k++) { CSGen.setSeed(seed + k * 7919); const T = CSGen.unstoppableTier(stage); const r = CSGen.generate(T, { cap: 4000 });
+    if (r.lvl) { postMessage({ stage, lvl: r.lvl, relocs: r.relocs }); return; } }
+  postMessage({ stage, error: true }); };`;
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    worker.onmessage = e => { const cb = pending[e.data.stage]; delete pending[e.data.stage]; if (cb) cb(e.data); };
+    worker.onerror = () => { worker = false; };
+  } catch (e) { worker = false; }
+  return worker;
+}
+function requestBoard(stage, cb) {
+  const seed = (Date.now() ^ (stage * 2654435761)) | 0;
+  const w = getWorker();
+  if (w) { pending[stage] = cb; w.postMessage({ stage, seed }); return; }
+  setTimeout(() => { // fallback: generate on the main thread
+    let r = { lvl: null };
+    for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(stage), { cap: 4000 }); }
+    cb(r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true });
+  }, 30);
+}
+function prefetch(stage) {
+  U.next = null; const run = U;
+  requestBoard(stage, res => {
+    if (U !== run) return;
+    if (res.error) return prefetch(stage);
+    U.next = res;
+    if (U.waiting) { U.waiting = false; loadUnstoppableBoard(); }
+  });
+}
+function startUnstoppable() {
+  mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true };
+  timeLeft = 120; over = false; busy = false; armed = null; hist = [];
+  show('play');
+  $('lvName').textContent = 'Stage 1'; $('lvTier').textContent = 'Unstoppable'; $('play').style.setProperty('--tc', TIER.unstoppable.color);
+  $('movesLabel').textContent = 'Cleared';
+  W = null; showGenerating();
+  prefetch(1);
+}
+function showGenerating() {
+  $('stage').innerHTML = '<div class="gen"><div><div class="spinner"></div>Building the next board…</div></div>';
+  $('powers').innerHTML = '';
+}
+function loadUnstoppableBoard() {
+  const res = U.next; U.next = null;
+  W = res.lvl; W.__orig = clone(W.blocks); W.tier = 'unstoppable'; W.opt = W.blocks.length + res.relocs;
+  ctx = null; rebuildCtx();
+  pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
+  $('lvName').textContent = 'Stage ' + U.stage;
+  buildBoard(); updateHud();
+  if (U.stage > 1) flash('Stage ' + U.stage);
+  prefetch(U.stage + 1);
+}
+function unstoppableClear() {
+  const bonus = 12 + W.blocks.length * 2, coins = 5 + Math.floor(U.stage / 2);
+  U.cleared++; U.earned += coins; timeLeft += bonus;
+  setCoins(S.coins + coins, true); sfx('coin');
+  flash(`+${bonus}s`);
+  U.stage++;
+  if (U.stage - 1 > S.best) { S.best = U.stage - 1; save(); }
+  busy = true;
+  setTimeout(() => {
+    busy = false;
+    if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
+  }, 650);
+}
+function endRun(quit) {
+  over = true; sfx('fail');
+  const reached = U.stage, best = Math.max(S.best, U.cleared);
+  S.best = best; S.bestCleared = Math.max(S.bestCleared || 0, U.cleared); save();
+  showCard(`<h3>${quit ? 'Run over' : "Time's up"}</h3><p>You cleared ${U.cleared} board${U.cleared === 1 ? '' : 's'} and reached stage ${reached}.<br>Best run: ${best} boards.</p>
+    ${U.earned ? `<div class="reward"><i class="coin"></i>+${U.earned}</div>` : ''}
+    <button class="btn" id="againBtn">Run again</button><button class="btn alt" id="menuBtn">Menu</button>`);
+  $('againBtn').onclick = startUnstoppable; $('menuBtn').onclick = () => { U = null; renderWelcome(); };
+}
+function flash(text) {
+  const f = document.createElement('div'); f.className = 'flash'; f.textContent = text; $('play').appendChild(f);
+  setTimeout(() => f.remove(), 1200);
 }
 
 // ---------- controls ----------
 function undo() {
-  if (!hist.length || busy || drag) return;
-  clearHint();
-  const h = hist.pop();
-  const wasRemoved = pos[h.i] < 0;
+  if (!hist.length || busy || drag || over) return;
+  clearHint(); armed = null;
+  const h = hist.pop(), wasRemoved = pos[h.i] < 0;
   pos = h.pos; moves = h.moves;
-  if (wasRemoved) { // re-create element
-    const el = makeShape(ctx.blocks[h.i], false); el.dataset.i = h.i; els[h.i] = el; ctx.field.appendChild(el); place(h.i, false);
-  } else place(h.i);
-  updateHud();
+  if (wasRemoved) redrawBlock(h.i); else place(h.i);
+  updateHud(); saveCurrent();
 }
-function clearHint() { hintEls.forEach(e => e.classList ? (e.classList.contains('ghost') ? e.remove() : e.classList.remove('hint')) : 0); hintEls = []; }
+function restart() {
+  if (busy || drag) return;
+  if (mode === 'campaign') { S.current = null; startCampaign(li, false); return; }
+  // Unstoppable: reset this board; the clock keeps running
+  W.blocks = clone(W.__orig); rebuildCtx();
+  pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; hist = []; armed = null; clearHint();
+  buildBoard(); updateHud();
+}
+function clearHint() { hintEls.forEach(e => e.classList.contains('ghost') ? e.remove() : e.classList.remove('hint')); hintEls = []; }
 function hint() {
-  if (over || busy || drag) return;
+  if (over || busy || drag || !W) return;
   clearHint();
-  // 1) a block that can shred right now?
   const occ = CS.occupancy(ctx, pos);
   for (let i = 0; i < pos.length; i++) {
     if (pos[i] < 0 || CS.frozen(ctx, pos, i)) continue;
-    const r = CS.reachable(ctx, occ, pos, i);
-    const a = r.find(a => CS.canExitFrom(ctx, i, a, occ));
+    const a = CS.reachable(ctx, occ, pos, i).find(a => CS.canExitFrom(ctx, i, a, occ));
     if (a != null) return showHint(i, a, 'Drag the glowing block into its gate.');
   }
-  const res = CS.solve(L, pos, 40000);
+  const res = CS.solve(W, pos, 40000);
   if (!res) return toast('This one is too tangled for a hint right now. Try Undo.');
-  if (res.unsolvable) return toast('No way out from here. Undo or restart.');
+  if (res.unsolvable) return toast('No way out from here. Undo, restart or use a power-up.');
   const st = res.plan[0];
   showHint(st.i, st.to, `Move the glowing block to the outlined spot. Best finish from here: ${res.relocs + pos.filter(p => p >= 0).length} moves.`);
 }
@@ -794,7 +1308,7 @@ function showHint(i, a, msg) {
   els[i].classList.add('hint'); hintEls.push(els[i]);
   if (a !== pos[i]) {
     const g = makeShape(ctx.blocks[i], true);
-    g.style.transform = `translate(${(a % L.w) * cs}px, ${Math.floor(a / L.w) * cs}px)`;
+    g.style.transform = `translate(${(a % W.w) * cs}px, ${Math.floor(a / W.w) * cs}px)`;
     ctx.field.appendChild(g); hintEls.push(g);
   }
   toast(msg);
@@ -807,30 +1321,85 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = 0; }, 2600);
 }
 
+// ---------- overlays ----------
 function showCard(html) { $('card').innerHTML = html; $('overlay').hidden = false; }
 function hideOverlay() { $('overlay').hidden = true; }
 function showRules() {
   showCard(`<h3>How to play</h3><div class="rules">
     <div><b>1</b><span>Drag a block. It slides around other blocks and stops at walls.</span></div>
-    <div><b>2</b><span>Push it into a gate of the same color to shred it. The block must fit inside the gate's width.</span></div>
-    <div><b>3</b><span>Arrow blocks only slide the way their arrows point. Ice blocks thaw after you shred the number of blocks shown.</span></div>
-    <div><b>4</b><span>Every drag uses one move. Clear the board before you run out. Superhard levels also have a clock.</span></div>
+    <div><b>2</b><span>Push it into a gate of the same color to shred it. It must fit the gate, and nothing can be in its way.</span></div>
+    <div><b>3</b><span>Arrow blocks only slide along their arrows. Ice blocks thaw after you shred the number of blocks shown.</span></div>
+    <div><b>4</b><span>Every drag uses one move. Power-ups cost coins and are limited on each level.</span></div>
+    <div><b>5</b><span>Beat a level to unlock the next one, earn coins and win a new board color.</span></div>
   </div><button class="btn" id="okBtn">Got it</button>`);
   $('okBtn').onclick = hideOverlay;
 }
-function goHome() { clearInterval(timer); hideOverlay(); clearHint(); $('play').hidden = true; $('home').hidden = false; renderHome(); }
+function showSettings() {
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify({ ...S, current: S.current }))));
+  showCard(`<h3>Settings</h3>
+    <button class="btn alt" id="sndBtn">Sound: ${S.sound ? 'on' : 'off'}</button>
+    <button class="btn alt" id="rulesBtn">How to play</button>
+    <p style="margin:16px 0 6px">Your progress saves on this phone automatically. Copy this backup code somewhere safe to restore it later.</p>
+    <textarea id="saveCode" readonly>${code}</textarea>
+    <div class="row2"><button class="btn alt" id="copyBtn">Copy code</button><button class="btn alt" id="loadBtn">Load code</button></div>
+    <button class="btn danger" id="resetBtn">Reset all progress</button>
+    <button class="btn" id="closeBtn">Done</button>`);
+  $('sndBtn').onclick = () => { S.sound = !S.sound; save(); $('sndBtn').textContent = 'Sound: ' + (S.sound ? 'on' : 'off'); };
+  $('rulesBtn').onclick = showRules;
+  $('closeBtn').onclick = () => { hideOverlay(); renderWelcome(); };
+  $('copyBtn').onclick = () => {
+    const ta = $('saveCode');
+    const done = () => { $('copyBtn').textContent = 'Copied'; };
+    try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); }); } catch (e) { ta.select(); }
+  };
+  $('loadBtn').onclick = () => {
+    const ta = $('saveCode');
+    if (ta.readOnly) { ta.readOnly = false; ta.value = ''; ta.placeholder = 'Paste a backup code, then tap Load code again'; ta.focus(); return; }
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(ta.value.trim()))));
+      if (!data || data.v !== 2) throw 0;
+      S = Object.assign(freshSave(), data); save(); applyTheme(); setCoins(S.coins);
+      showCard(`<h3>Loaded</h3><p>Your progress is restored.</p><button class="btn" id="okBtn">OK</button>`); $('okBtn').onclick = renderWelcome;
+    } catch (e) { ta.value = ''; ta.placeholder = "That code didn't work. Check you pasted all of it."; }
+  };
+  $('resetBtn').onclick = () => {
+    if ($('resetBtn').dataset.sure) { const snd = S.sound; S = freshSave(); S.sound = snd; save(); applyTheme(); hideOverlay(); renderWelcome(); return; }
+    $('resetBtn').dataset.sure = 1; $('resetBtn').textContent = 'Tap again to erase everything';
+  };
+}
+function goBack() {
+  if (mode === 'unstoppable' && U && !over) {
+    showCard(`<h3>Paused</h3><p>Stage ${U.stage} · ${U.cleared} cleared. The clock is stopped.</p>
+      <button class="btn" id="resumeBtn">Resume</button><button class="btn alt" id="quitBtn">End run</button>`);
+    $('resumeBtn').onclick = hideOverlay; $('quitBtn').onclick = () => { hideOverlay(); endRun(true); };
+    return;
+  }
+  saveCurrent(); clearHint(); armed = null; renderWelcome();
+}
 
-$('backBtn').onclick = goHome;
+// ---------- wiring ----------
+$('playBtn').onclick = () => {
+  const cur = S.current && idx[S.current.id];
+  if (cur != null) return startCampaign(cur, true);
+  const n = nextLevel();
+  if (n < 0) return renderLevels();
+  startCampaign(n, false);
+};
+$('unstBtn').onclick = startUnstoppable;
+$('levelsBtn').onclick = renderLevels;
+$('colorsBtn').onclick = renderColors;
+$('settingsBtn').onclick = showSettings;
+document.querySelectorAll('.backHome').forEach(b => b.onclick = renderWelcome);
+$('backBtn').onclick = goBack;
 $('undoBtn').onclick = undo;
-$('restartBtn').onclick = () => startLevel(li);
+$('restartBtn').onclick = restart;
 $('hintBtn').onclick = hint;
-$('helpBtn').onclick = showRules;
-$('howBtn').onclick = showRules;
-$('soundBtn').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); renderHome(); };
 let rT = null;
-window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('play').hidden && L) { clearHint(); buildBoard(); updateHud(); } }, 120); });
+window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('play').hidden && W && ctx && ctx.field) { clearHint(); buildBoard(); updateHud(); } }, 120); });
 document.addEventListener('gesturestart', e => e.preventDefault());
-renderHome();
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => L, cs: () => cs, moves: () => moves, start: startLevel };
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrent(); });
+applyTheme();
+renderWelcome();
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S };
 })();
 </script>
