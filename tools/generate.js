@@ -19,7 +19,7 @@ const TIERS = {
 function soloOk(lvl, b) {
   const l = { ...lvl, blocks: [b] }; const ctx = CS.makeCtx(l);
   const pos = [b.y * l.w + b.x]; const occ = CS.occupancy(ctx, pos);
-  return CS.reachable(ctx, occ, pos, 0).some(a => CS.canExitFrom(ctx, 0, a));
+  return CS.reachable(ctx, occ, pos, 0).some(a => CS.canExitFrom(ctx, 0, a, occ));
 }
 function randomLevel(T) {
   const w = ri(...T.w), h = ri(...T.h);
@@ -76,7 +76,7 @@ function precheck(lvl) {
   for (let i = 0; i < ctx.blocks.length; i++) {
     const pos = ctx.blocks.map(() => -1); const b = ctx.blocks[i]; pos[i] = b.y * ctx.w + b.x;
     const occ = CS.occupancy(ctx, pos);
-    if (!CS.reachable(ctx, occ, pos, i).some(a => CS.canExitFrom(ctx, i, a))) return false;
+    if (!CS.reachable(ctx, occ, pos, i).some(a => CS.canExitFrom(ctx, i, a, occ))) return false;
   }
   return true;
 }

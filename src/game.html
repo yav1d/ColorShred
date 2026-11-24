@@ -381,13 +381,7 @@ function place(i, anim) {
 }
 // exit sides available for block i at anchor a
 function exitSides(i, a) {
-  const b = ctx.blocks[i], si = CS.shapeInfo[b.sh], x = a % L.w, y = Math.floor(a / L.w), out = [];
-  for (const g of L.gates) {
-    if (g.c !== b.c) continue;
-    const s = CS.exitAt({ w: L.w, h: L.h, gates: [g] }, b, si, x, y);
-    if (s) out.push(s);
-  }
-  return out;
+  return [...CS.clearSides(ctx, CS.occupancy(ctx, pos), i, a)];
 }
 
 // ---------- input ----------
@@ -549,7 +543,7 @@ function hint() {
   for (let i = 0; i < pos.length; i++) {
     if (pos[i] < 0 || CS.frozen(ctx, pos, i)) continue;
     const r = CS.reachable(ctx, occ, pos, i);
-    const a = r.find(a => CS.canExitFrom(ctx, i, a));
+    const a = r.find(a => CS.canExitFrom(ctx, i, a, occ));
     if (a != null) return showHint(i, a, 'Drag the glowing block into its gate.');
   }
   const res = CS.solve(L, pos, 40000);

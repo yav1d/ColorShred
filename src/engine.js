@@ -52,16 +52,44 @@
     return { level, w, h, wall, blocks, per };
   }
 
-  // Returns gate side letter if block anchored at (x,y) can exit through a matching gate, else ''
+  // Gate sides a block anchored at (x,y) lines up with (touching the wall, span inside the gate). '' if none.
+  // Lining up is not enough on its own: sweepCells() must also be clear (see canExitFrom).
   function exitAt(level, b, si, x, y) {
+    let out = '';
     for (const g of level.gates) {
       if (g.c !== b.c) continue;
-      if (g.s === 'L' && x === 0 && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) return 'L';
-      if (g.s === 'R' && x + si.w === level.w && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) return 'R';
-      if (g.s === 'T' && y === 0 && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) return 'T';
-      if (g.s === 'B' && y + si.h === level.h && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) return 'B';
+      let s = '';
+      if (g.s === 'L' && x === 0 && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) s = 'L';
+      if (g.s === 'R' && x + si.w === level.w && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) s = 'R';
+      if (g.s === 'T' && y === 0 && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) s = 'T';
+      if (g.s === 'B' && y + si.h === level.h && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) s = 'B';
+      if (s && !out.includes(s)) out += s;
     }
-    return '';
+    return out;
+  }
+
+  // Board cells the block's cells pass over on their way out through `side`
+  // (e.g. the empty notch of an L shape). They must be free for the block to leave.
+  function sweepCells(ctx, i, a, side) {
+    const w = ctx.w, x = a % w, y = (a / w) | 0, out = [];
+    const cells = ctx.per[i].si.cells, own = new Set(cells.map(([dx, dy]) => (y + dy) * w + x + dx));
+    const [sx, sy] = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] }[side];
+    for (const [dx, dy] of cells) {
+      let cx = x + dx + sx, cy = y + dy + sy;
+      while (cx >= 0 && cy >= 0 && cx < w && cy < ctx.h) {
+        const c = cy * w + cx; if (!own.has(c)) out.push(c);
+        cx += sx; cy += sy;
+      }
+    }
+    return out;
+  }
+  function clearSides(ctx, occ, i, a) {
+    const k = ctx.per[i].anchors[a]; if (k < 0) return '';
+    let out = '';
+    for (const side of ctx.per[i].exitSide[k]) {
+      if (sweepCells(ctx, i, a, side).every(c => !ctx.wall[c] && (occ[c] === -1 || occ[c] === i))) out += side;
+    }
+    return out;
   }
 
   // occupancy grid from positions (pos[i] = anchor index or -1 removed)
@@ -108,9 +136,9 @@
     return q;
   }
 
-  function canExitFrom(ctx, i, a) {
+  function canExitFrom(ctx, i, a, occ) {
     const p = ctx.per[i]; const k = p.anchors[a];
-    return k >= 0 && p.exitSide[k] !== '';
+    return k >= 0 && p.exitSide[k] !== '' && clearSides(ctx, occ, i, a) !== '';
   }
 
   // Remove every block that can currently reach an exit; repeat until stable.
@@ -122,7 +150,7 @@
       for (let i = 0; i < pos.length; i++) {
         if (pos[i] < 0 || frozen(ctx, pos, i)) continue;
         const r = reachable(ctx, occ, pos, i);
-        if (r.some(a => canExitFrom(ctx, i, a))) {
+        if (r.some(a => canExitFrom(ctx, i, a, occ))) {
           const x = pos[i] % ctx.w, y = (pos[i] / ctx.w) | 0;
           for (const [dx, dy] of ctx.per[i].si.cells) occ[(y + dy) * ctx.w + x + dx] = -1;
           pos[i] = -1; exits++; changed = true;
@@ -155,6 +183,8 @@
           const f = new Uint8Array(W * ctx.h); const ax = ctx.blocks[j].ax;
           for (const a of r) {
             const x = a % W, y = (a / W) | 0;
+            const ek = ctx.per[j].anchors[a];
+            for (const side of ctx.per[j].exitSide[ek]) for (const c of sweepCells(ctx, j, a, side)) f[c] = 1;
             for (const [dx, dy] of ctx.per[j].si.cells) {
               const cx = x + dx, cy = y + dy;
               if (ax !== 2) { if (cx > 0) f[cy * W + cx - 1] = 1; if (cx < W - 1) f[cy * W + cx + 1] = 1; }
@@ -180,7 +210,7 @@
               if (j === i || !F[j]) continue;
               if (!freed.some(c => F[j][c])) continue;
               const r = reachable(ctx, occ2, t, j);
-              if (r.some(b => canExitFrom(ctx, j, b))) opens = true;
+              if (r.some(b => canExitFrom(ctx, j, b, occ2))) opens = true;
             }
             const c = opens ? closure(ctx, t).pos : t;
             const k = key(c);
@@ -202,6 +232,6 @@
     return { unsolvable: true };
   }
 
-  root.CS = { SHAPES, shapeInfo, makeCtx, occupancy, fits, reachable, closure, solve, frozen, canExitFrom, exitAt, removedCount };
+  root.CS = { SHAPES, shapeInfo, makeCtx, occupancy, fits, reachable, closure, solve, frozen, canExitFrom, clearSides, sweepCells, exitAt, removedCount };
   if (typeof module !== 'undefined') module.exports = root.CS;
 })(typeof window !== 'undefined' ? window : globalThis);
