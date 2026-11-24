@@ -1,0 +1,812 @@
+<title>ColorShred</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ColorShred">
+<meta name="theme-color" content="#16172a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Layout: one-screen app. Home = tier lists of levels; Play = stats row, board in a steel shredder frame, control row. */
+:root {
+  --ink: #16172a;        /* page */
+  --steel: #2b2d4a;      /* board frame */
+  --steel-hi: #3a3d63;
+  --pit: #1d1e34;        /* board field */
+  --line: #ffffff10;
+  --text: #f3f1ff;
+  --muted: #a3a2c9;
+  --accent: #ffc93c;     /* sun yellow: UI emphasis */
+  --danger: #ff6b6b;
+  --display: "Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: radial-gradient(120% 80% at 50% 0%, #23244a 0%, var(--ink) 60%) fixed, var(--ink);
+  color: var(--text); font-family: var(--body); font-weight: 800;
+  overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- Home ---------- */
+#home { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.brand { text-align: center; padding-block: 22px 6px; }
+.brand h1 { font-family: var(--display); font-weight: 400; font-size: clamp(42px, 13vw, 64px); letter-spacing: .5px; margin: 0; line-height: 1; }
+.brand h1 span { display: inline-block; }
+.brand p { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+.tier { max-width: 520px; width: 100%; margin: 18px auto 0; }
+.tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.tier-head h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
+.tier-head small { color: var(--muted); font-size: 13px; text-align: right; }
+.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.lv { aspect-ratio: 1; border-radius: 16px; background: var(--steel); box-shadow: inset 0 -4px 0 #0003, inset 0 1px 0 #ffffff14;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 20px; }
+.lv .st { font-size: 11px; letter-spacing: 1px; color: var(--accent); min-height: 13px; }
+.lv.done { background: var(--steel-hi); }
+.lv.locked { opacity: .35; }
+.lv.next { box-shadow: inset 0 -4px 0 #0003, 0 0 0 3px var(--tc); }
+.home-foot { display: flex; justify-content: center; gap: 12px; padding-block: 22px 12px; }
+.pill { padding: 10px 16px; border-radius: 999px; background: var(--steel); font-size: 14px; }
+
+/* ---------- Play ---------- */
+#play { gap: 8px; }
+.topbar { display: flex; align-items: center; gap: 10px; padding-top: 8px; }
+.icon-btn { width: 44px; height: 44px; border-radius: 14px; background: var(--steel); display: grid; place-items: center; flex: none;
+  box-shadow: inset 0 -3px 0 #0004; }
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn:active { transform: translateY(1px); }
+.title { flex: 1; text-align: center; min-width: 0; }
+.title .lvname { font-family: var(--display); font-size: 30px; line-height: 1; }
+.chip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 999px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #16172a; background: var(--tc); }
+.stats { display: flex; justify-content: center; gap: 10px; }
+.stat { background: #ffffff0b; border-radius: 14px; padding: 6px 8px; text-align: center; flex: 1; max-width: 120px; min-width: 0; }
+.stat b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.stat.warn b { color: var(--danger); }
+#stage { flex: 1; min-height: 0; display: grid; place-items: center; position: relative; }
+.controls { display: flex; justify-content: center; gap: 12px; }
+.ctl { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 72px; padding: 8px 0; border-radius: 16px; background: var(--steel);
+  font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); box-shadow: inset 0 -3px 0 #0004; }
+.ctl svg { width: 24px; height: 24px; color: var(--text); }
+.ctl:disabled { opacity: .4; }
+
+/* board */
+.frame { position: relative; border-radius: calc(var(--cs) * .32); background: linear-gradient(180deg, var(--steel-hi), var(--steel));
+  box-shadow: 0 14px 30px #0007, inset 0 2px 0 #ffffff18, inset 0 -5px 0 #0004; touch-action: none; }
+.field { position: absolute; overflow: hidden; border-radius: calc(var(--cs) * .12); background-color: var(--pit);
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: var(--cs) var(--cs); box-shadow: inset 0 3px 8px #0008; }
+.wall { position: absolute; border-radius: calc(var(--cs) * .14);
+  background: repeating-linear-gradient(45deg, #3a3c5e 0 6px, #303252 6px 12px); box-shadow: inset 0 -3px 0 #0005, inset 0 2px 0 #ffffff12; }
+.gate { position: absolute; border-radius: calc(var(--cs) * .16); overflow: hidden; display: grid; place-items: center;
+  background: var(--gc); box-shadow: inset 0 0 0 2px #0003; }
+.gate::before { content: ""; position: absolute; inset: 0; opacity: .55; }
+.gate.v::before { background: repeating-linear-gradient(0deg, transparent 0 5px, #0005 5px 7px); }
+.gate.h::before { background: repeating-linear-gradient(90deg, transparent 0 5px, #0005 5px 7px); }
+.gate svg { position: relative; width: 70%; height: 70%; color: #fff; filter: drop-shadow(0 1px 0 #0006); }
+.gate.pulse { animation: gpulse .5s ease-out; }
+@keyframes gpulse { 50% { filter: brightness(1.6); transform: scale(1.08); } }
+
+.block { position: absolute; left: 0; top: 0; will-change: transform; transition: transform 70ms linear; }
+.block.grab { z-index: 5; filter: brightness(1.12) drop-shadow(0 6px 8px #0008); }
+.block.exiting { transition: transform 300ms cubic-bezier(.5,0,.9,.6); z-index: 4; }
+.cell { position: absolute; background: var(--bc); box-shadow: inset 0 calc(var(--cs) * -.09) 0 var(--bd), inset 0 calc(var(--cs) * .05) 0 #ffffff40; }
+.cell::after { content: ""; position: absolute; left: 30%; top: 26%; width: 40%; height: 40%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffffb0, #ffffff22 45%, transparent 70%); }
+.glyph { position: absolute; display: grid; place-items: center; pointer-events: none; color: #fff; }
+.glyph svg { width: calc(var(--cs) * .62); height: calc(var(--cs) * .62); filter: drop-shadow(0 1px 1px #0007); }
+.ice { position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(135deg, #e8f6ffcc, #bfe3ffaa 50%, #e8f6ffcc); display: grid; place-items: center;
+  font-family: var(--display); color: #2b5b86; font-size: calc(var(--cs) * .55); transition: opacity .4s; }
+.block.shake { animation: shake .3s; }
+@keyframes shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+.ghost { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
+.ghost .cell { background: transparent; box-shadow: none; outline: 3px dashed #fff; outline-offset: -4px; }
+.ghost .cell::after { display: none; }
+.block.hint { animation: hint 1s ease-in-out infinite; }
+@keyframes hint { 50% { filter: brightness(1.5) drop-shadow(0 0 10px #fff); } }
+.shred { position: absolute; pointer-events: none; border-radius: 2px; z-index: 6; }
+
+/* overlays */
+.overlay { position: absolute; inset: 0; background: #0b0c18cc; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: grid; place-items: center; z-index: 20; padding: 16px; }
+.card { width: min(360px, 100%); background: var(--steel); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
+  box-shadow: 0 20px 50px #0009, inset 0 2px 0 #ffffff18; }
+.card h3 { font-family: var(--display); font-weight: 400; font-size: 36px; margin: 0 0 6px; }
+.card p { color: var(--muted); margin: 0 0 16px; font-size: 15px; line-height: 1.45; }
+.stars { font-size: 40px; letter-spacing: 6px; color: #ffffff22; margin-bottom: 8px; }
+.stars .on { color: var(--accent); }
+.btn { display: block; width: 100%; padding: 14px; border-radius: 16px; font-size: 18px; background: var(--accent); color: #241a00;
+  box-shadow: inset 0 -4px 0 #0003; margin-top: 10px; }
+.btn.alt { background: #ffffff14; color: var(--text); }
+.rules { text-align: left; display: grid; gap: 10px; margin: 6px 0 14px; color: var(--text); font-size: 15px; line-height: 1.4; font-weight: 600; }
+.rules div { display: flex; gap: 10px; }
+.rules b { color: var(--accent); font-family: var(--display); font-weight: 400; font-size: 18px; min-width: 18px; }
+.toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: #000c; padding: 10px 16px; border-radius: 12px;
+  font-size: 14px; z-index: 15; max-width: 88%; text-align: center; transition: opacity .3s; }
+@media (prefers-reduced-motion: reduce) { .block, .block.exiting { transition-duration: 1ms; } .block.hint, .gate.pulse { animation: none; } }
+</style>
+
+<div id="home" class="screen">
+  <div class="brand">
+    <h1 id="logo">ColorShred</h1>
+    <p>Slide every block into its matching shredder.</p>
+  </div>
+  <div id="tiers"></div>
+  <div class="home-foot">
+    <button class="pill" id="howBtn">How to play</button>
+    <button class="pill" id="soundBtn">Sound: on</button>
+  </div>
+</div>
+
+<div id="play" class="screen" hidden>
+  <div class="topbar">
+    <button class="icon-btn" id="backBtn" aria-label="Back to levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="title"><div class="lvname" id="lvName">Level 1</div><span class="chip" id="lvTier">Medium</span></div>
+    <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9.2 9a3 3 0 1 1 4.3 2.7c-.9.4-1.5 1.2-1.5 2.1v.4"/><circle cx="12" cy="18.4" r=".6" fill="currentColor"/></svg></button>
+  </div>
+  <div class="stats">
+    <div class="stat" id="movesStat"><b id="movesLeft">0</b><span>Moves left</span></div>
+    <div class="stat" id="blocksStat"><b id="blocksLeft">0</b><span>Blocks</span></div>
+    <div class="stat" id="timeStat" hidden><b id="timeLeft">0:00</b><span>Time</span></div>
+  </div>
+  <div id="stage"></div>
+  <div class="controls">
+    <button class="ctl" id="undoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button>
+    <button class="ctl" id="restartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>Restart</button>
+    <button class="ctl" id="hintBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Hint</button>
+  </div>
+</div>
+
+<div id="overlay" class="overlay" hidden><div class="card" id="card"></div></div>
+
+<script>
+// ColorShred engine: rules + solver. Shared by the browser game and the Node level generator.
+(function (root) {
+  'use strict';
+
+  // Shapes as cell offsets [dx, dy]
+  const SHAPES = [
+    [[0,0]],                          // 0  1x1
+    [[0,0],[1,0]],                    // 1  2x1
+    [[0,0],[0,1]],                    // 2  1x2
+    [[0,0],[1,0],[2,0]],              // 3  3x1
+    [[0,0],[0,1],[0,2]],              // 4  1x3
+    [[0,0],[1,0],[0,1],[1,1]],        // 5  2x2
+    [[0,0],[0,1],[1,1]],              // 6  L small
+    [[1,0],[0,1],[1,1]],              // 7
+    [[0,0],[1,0],[0,1]],              // 8
+    [[0,0],[1,0],[1,1]],              // 9
+    [[0,0],[0,1],[0,2],[1,2]],        // 10 L
+    [[0,0],[1,0],[2,0],[1,1]],        // 11 T
+    [[0,0],[1,0],[2,0],[0,1]],        // 12 L flat
+    [[1,0],[1,1],[1,2],[0,2]],        // 13 J
+    [[0,0],[1,0],[1,1],[2,1]],        // 14 Z
+    [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]], // 15 3x2
+    [[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]], // 16 2x3
+  ];
+  const shapeInfo = SHAPES.map(cells => {
+    let w = 0, h = 0;
+    for (const [x, y] of cells) { w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
+    return { cells, w, h };
+  });
+
+  // axis: 0 = free, 1 = horizontal only, 2 = vertical only
+  // Level: {w,h,walls:[idx], gates:[{s:'L'|'R'|'T'|'B', p, n, c}], blocks:[{c,sh,x,y,ax,ice}]}
+
+  function makeCtx(level) {
+    const { w, h } = level;
+    const wall = new Uint8Array(w * h);
+    for (const i of level.walls || []) wall[i] = 1;
+    const blocks = level.blocks.map(b => ({ ...b, ax: b.ax || 0, ice: b.ice || 0 }));
+    // Precompute for each block: list of valid anchors (fits inside & not on walls), and exit flags
+    const per = blocks.map(b => {
+      const si = shapeInfo[b.sh];
+      const anchors = new Int32Array(w * h).fill(-1);
+      const list = [];
+      for (let y = 0; y + si.h <= h; y++) for (let x = 0; x + si.w <= w; x++) {
+        let ok = true;
+        for (const [dx, dy] of si.cells) if (wall[(y + dy) * w + x + dx]) { ok = false; break; }
+        if (ok) { anchors[y * w + x] = list.length; list.push(y * w + x); }
+      }
+      const exitSide = list.map(a => exitAt(level, b, si, a % w, (a / w) | 0));
+      return { si, anchors, list, exitSide };
+    });
+    return { level, w, h, wall, blocks, per };
+  }
+
+  // Returns gate side letter if block anchored at (x,y) can exit through a matching gate, else ''
+  function exitAt(level, b, si, x, y) {
+    for (const g of level.gates) {
+      if (g.c !== b.c) continue;
+      if (g.s === 'L' && x === 0 && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) return 'L';
+      if (g.s === 'R' && x + si.w === level.w && b.ax !== 2 && y >= g.p && y + si.h <= g.p + g.n) return 'R';
+      if (g.s === 'T' && y === 0 && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) return 'T';
+      if (g.s === 'B' && y + si.h === level.h && b.ax !== 1 && x >= g.p && x + si.w <= g.p + g.n) return 'B';
+    }
+    return '';
+  }
+
+  // occupancy grid from positions (pos[i] = anchor index or -1 removed)
+  function occupancy(ctx, pos) {
+    const occ = new Int16Array(ctx.w * ctx.h).fill(-1);
+    for (let i = 0; i < pos.length; i++) {
+      if (pos[i] < 0) continue;
+      const x = pos[i] % ctx.w, y = (pos[i] / ctx.w) | 0;
+      for (const [dx, dy] of ctx.per[i].si.cells) occ[(y + dy) * ctx.w + x + dx] = i;
+    }
+    return occ;
+  }
+
+  function fits(ctx, occ, i, x, y) {
+    const p = ctx.per[i];
+    if (x < 0 || y < 0 || x + p.si.w > ctx.w || y + p.si.h > ctx.h) return false;
+    if (p.anchors[y * ctx.w + x] < 0) return false;
+    for (const [dx, dy] of p.si.cells) {
+      const o = occ[(y + dy) * ctx.w + x + dx];
+      if (o !== -1 && o !== i) return false;
+    }
+    return true;
+  }
+
+  function removedCount(pos) { let n = 0; for (const p of pos) if (p < 0) n++; return n; }
+  function frozen(ctx, pos, i) { return ctx.blocks[i].ice > removedCount(pos); }
+
+  // BFS reachable anchors for block i
+  function reachable(ctx, occ, pos, i) {
+    const w = ctx.w, start = pos[i], ax = ctx.blocks[i].ax;
+    const seen = new Set([start]); const q = [start];
+    const dirs = [];
+    if (ax !== 2) dirs.push([1, 0], [-1, 0]);
+    if (ax !== 1) dirs.push([0, 1], [0, -1]);
+    for (let qi = 0; qi < q.length; qi++) {
+      const a = q[qi], x = a % w, y = (a / w) | 0;
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx, ny = y + dy;
+        if (!fits(ctx, occ, i, nx, ny)) continue;
+        const na = ny * w + nx;
+        if (!seen.has(na)) { seen.add(na); q.push(na); }
+      }
+    }
+    return q;
+  }
+
+  function canExitFrom(ctx, i, a) {
+    const p = ctx.per[i]; const k = p.anchors[a];
+    return k >= 0 && p.exitSide[k] !== '';
+  }
+
+  // Remove every block that can currently reach an exit; repeat until stable.
+  function closure(ctx, pos) {
+    pos = pos.slice(); let exits = 0, changed = true;
+    const occ = occupancy(ctx, pos);
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < pos.length; i++) {
+        if (pos[i] < 0 || frozen(ctx, pos, i)) continue;
+        const r = reachable(ctx, occ, pos, i);
+        if (r.some(a => canExitFrom(ctx, i, a))) {
+          const x = pos[i] % ctx.w, y = (pos[i] / ctx.w) | 0;
+          for (const [dx, dy] of ctx.per[i].si.cells) occ[(y + dy) * ctx.w + x + dx] = -1;
+          pos[i] = -1; exits++; changed = true;
+        }
+      }
+    }
+    return { pos, exits };
+  }
+
+  // Min relocations BFS. Returns {relocs, plan:[{i, to}], states} or null if unsolvable/capped.
+  function solve(level, startPos, cap) {
+    cap = cap || 200000;
+    const ctx = level.__ctx || makeCtx(level);
+    const p0 = startPos ? startPos.slice() : ctx.blocks.map(b => b.y * ctx.w + b.x);
+    const c0 = closure(ctx, p0).pos;
+    const key = p => p.join(',');
+    if (c0.every(v => v < 0)) return { relocs: 0, plan: [], states: 1 };
+    const parent = new Map([[key(c0), null]]);
+    const W = ctx.w, N = c0.length;
+    let frontier = [c0], depth = 0, states = 1;
+    while (frontier.length) {
+      depth++;
+      const next = [];
+      for (const s of frontier) {
+        const occ = occupancy(ctx, s);
+        const R = [], F = [];
+        for (let j = 0; j < N; j++) {
+          if (s[j] < 0 || frozen(ctx, s, j)) { R.push(null); F.push(null); continue; }
+          const r = reachable(ctx, occ, s, j); R.push(r);
+          const f = new Uint8Array(W * ctx.h); const ax = ctx.blocks[j].ax;
+          for (const a of r) {
+            const x = a % W, y = (a / W) | 0;
+            for (const [dx, dy] of ctx.per[j].si.cells) {
+              const cx = x + dx, cy = y + dy;
+              if (ax !== 2) { if (cx > 0) f[cy * W + cx - 1] = 1; if (cx < W - 1) f[cy * W + cx + 1] = 1; }
+              if (ax !== 1) { if (cy > 0) f[(cy - 1) * W + cx] = 1; if (cy < ctx.h - 1) f[(cy + 1) * W + cx] = 1; }
+            }
+          }
+          F.push(f);
+        }
+        for (let i = 0; i < N; i++) {
+          if (!R[i]) continue;
+          const ox = s[i] % W, oy = (s[i] / W) | 0, cells = ctx.per[i].si.cells;
+          for (const a of R[i]) {
+            if (a === s[i]) continue;
+            const t = s.slice(); t[i] = a;
+            const nx = a % W, ny = (a / W) | 0;
+            const occ2 = occ.slice();
+            const freed = [];
+            for (const [dx, dy] of cells) occ2[(oy + dy) * W + ox + dx] = -1;
+            for (const [dx, dy] of cells) occ2[(ny + dy) * W + nx + dx] = i;
+            for (const [dx, dy] of cells) { const c = (oy + dy) * W + ox + dx; if (occ2[c] === -1) freed.push(c); }
+            let opens = false;
+            for (let j = 0; j < N && !opens; j++) {
+              if (j === i || !F[j]) continue;
+              if (!freed.some(c => F[j][c])) continue;
+              const r = reachable(ctx, occ2, t, j);
+              if (r.some(b => canExitFrom(ctx, j, b))) opens = true;
+            }
+            const c = opens ? closure(ctx, t).pos : t;
+            const k = key(c);
+            if (parent.has(k)) continue;
+            parent.set(k, { from: key(s), i, to: a });
+            states++;
+            if (c.every(v => v < 0)) {
+              const plan = []; let cur = k;
+              while (parent.get(cur)) { const e = parent.get(cur); plan.unshift({ i: e.i, to: e.to }); cur = e.from; }
+              return { relocs: depth, plan, states };
+            }
+            if (states > cap) return null;
+            next.push(c);
+          }
+        }
+      }
+      frontier = next;
+    }
+    return { unsolvable: true };
+  }
+
+  root.CS = { SHAPES, shapeInfo, makeCtx, occupancy, fits, reachable, closure, solve, frozen, canExitFrom, exitAt, removedCount };
+  if (typeof module !== 'undefined') module.exports = root.CS;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>window.CS_LEVELS = [{"tier":"medium","w":6,"h":7,"walls":[15],"gates":[{"s":"R","p":5,"n":1,"c":3},{"s":"B","p":1,"n":3,"c":1},{"s":"T","p":3,"n":3,"c":9},{"s":"B","p":5,"n":1,"c":9},{"s":"L","p":5,"n":1,"c":6}],"blocks":[{"c":9,"sh":8,"x":4,"y":0,"ax":2},{"c":1,"sh":8,"x":1,"y":1},{"c":1,"sh":5,"x":4,"y":2},{"c":9,"sh":7,"x":1,"y":3},{"c":9,"sh":0,"x":5,"y":6,"ax":2},{"c":1,"sh":9,"x":2,"y":5},{"c":9,"sh":4,"x":0,"y":3},{"c":9,"sh":2,"x":0,"y":0},{"c":9,"sh":8,"x":4,"y":4},{"c":1,"sh":9,"x":2,"y":0},{"c":6,"sh":0,"x":1,"y":3},{"c":9,"sh":0,"x":2,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":1,"sh":0,"x":0,"y":6}],"opt":16,"moves":21,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[28,34],"gates":[{"s":"R","p":2,"n":1,"c":6},{"s":"B","p":1,"n":3,"c":3},{"s":"T","p":3,"n":3,"c":3},{"s":"L","p":3,"n":3,"c":9},{"s":"L","p":1,"n":1,"c":1},{"s":"T","p":0,"n":2,"c":1}],"blocks":[{"c":1,"sh":8,"x":2,"y":1},{"c":9,"sh":9,"x":4,"y":2},{"c":9,"sh":1,"x":4,"y":1},{"c":6,"sh":0,"x":3,"y":5},{"c":1,"sh":6,"x":0,"y":0},{"c":9,"sh":3,"x":3,"y":6},{"c":6,"sh":1,"x":0,"y":6},{"c":9,"sh":2,"x":5,"y":4},{"c":1,"sh":4,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":2},{"c":6,"sh":3,"x":1,"y":0},{"c":6,"sh":0,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":4},{"c":3,"sh":0,"x":2,"y":5}],"opt":16,"moves":21,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[28],"gates":[{"s":"B","p":3,"n":2,"c":2},{"s":"T","p":2,"n":3,"c":9},{"s":"L","p":0,"n":2,"c":1},{"s":"L","p":3,"n":3,"c":1},{"s":"B","p":1,"n":1,"c":8},{"s":"R","p":4,"n":2,"c":6}],"blocks":[{"c":2,"sh":0,"x":0,"y":3},{"c":1,"sh":1,"x":2,"y":1},{"c":9,"sh":4,"x":2,"y":2},{"c":1,"sh":3,"x":1,"y":6},{"c":2,"sh":9,"x":4,"y":5},{"c":9,"sh":6,"x":3,"y":2},{"c":1,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":1,"y":2},{"c":1,"sh":5,"x":4,"y":0},{"c":2,"sh":2,"x":5,"y":2},{"c":9,"sh":1,"x":0,"y":1},{"c":1,"sh":1,"x":0,"y":0},{"c":6,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":0,"y":2},{"c":6,"sh":1,"x":2,"y":5}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":3,"c":8},{"s":"T","p":1,"n":1,"c":8},{"s":"B","p":0,"n":2,"c":1},{"s":"R","p":4,"n":3,"c":1},{"s":"L","p":1,"n":1,"c":2},{"s":"T","p":5,"n":1,"c":3}],"blocks":[{"c":1,"sh":5,"x":3,"y":0},{"c":1,"sh":1,"x":0,"y":7},{"c":1,"sh":9,"x":3,"y":2},{"c":1,"sh":8,"x":3,"y":4},{"c":3,"sh":2,"x":2,"y":1},{"c":1,"sh":2,"x":5,"y":5},{"c":8,"sh":6,"x":0,"y":0},{"c":8,"sh":7,"x":3,"y":5},{"c":1,"sh":9,"x":0,"y":4,"ax":2},{"c":2,"sh":1,"x":2,"y":7},{"c":1,"sh":7,"x":0,"y":2},{"c":8,"sh":3,"x":0,"y":6},{"c":2,"sh":1,"x":2,"y":3},{"c":3,"sh":2,"x":5,"y":2},{"c":1,"sh":0,"x":4,"y":7}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[31],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":3,"c":8},{"s":"R","p":4,"n":1,"c":9},{"s":"R","p":2,"n":1,"c":6}],"blocks":[{"c":6,"sh":1,"x":0,"y":4},{"c":7,"sh":2,"x":2,"y":5},{"c":7,"sh":4,"x":3,"y":2},{"c":8,"sh":7,"x":4,"y":1},{"c":7,"sh":4,"x":5,"y":4},{"c":7,"sh":9,"x":3,"y":0},{"c":6,"sh":0,"x":0,"y":3},{"c":7,"sh":2,"x":3,"y":5},{"c":8,"sh":6,"x":1,"y":0},{"c":7,"sh":1,"x":0,"y":6},{"c":7,"sh":9,"x":1,"y":3},{"c":7,"sh":1,"x":1,"y":2},{"c":8,"sh":2,"x":4,"y":3},{"c":8,"sh":2,"x":4,"y":5},{"c":7,"sh":0,"x":0,"y":2}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"B","p":5,"n":1,"c":1},{"s":"R","p":5,"n":1,"c":1},{"s":"B","p":2,"n":2,"c":6},{"s":"R","p":3,"n":1,"c":3},{"s":"L","p":1,"n":2,"c":3},{"s":"T","p":3,"n":2,"c":7},{"s":"L","p":4,"n":2,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":1},{"c":3,"sh":6,"x":1,"y":5},{"c":9,"sh":3,"x":3,"y":5},{"c":9,"sh":3,"x":0,"y":4},{"c":3,"sh":3,"x":3,"y":0},{"c":9,"sh":5,"x":4,"y":3},{"c":6,"sh":0,"x":2,"y":0},{"c":6,"sh":8,"x":0,"y":0},{"c":6,"sh":9,"x":0,"y":2},{"c":7,"sh":8,"x":3,"y":2},{"c":6,"sh":0,"x":4,"y":6},{"c":9,"sh":0,"x":0,"y":3},{"c":3,"sh":0,"x":1,"y":1},{"c":7,"sh":0,"x":2,"y":5},{"c":7,"sh":2,"x":5,"y":1}],"opt":17,"moves":22,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[32,27],"gates":[{"s":"R","p":1,"n":3,"c":6},{"s":"B","p":2,"n":2,"c":7},{"s":"T","p":1,"n":2,"c":2},{"s":"L","p":2,"n":1,"c":2},{"s":"L","p":4,"n":2,"c":0}],"blocks":[{"c":0,"sh":7,"x":1,"y":3},{"c":2,"sh":4,"x":2,"y":0},{"c":0,"sh":1,"x":4,"y":0},{"c":0,"sh":3,"x":3,"y":2},{"c":2,"sh":1,"x":4,"y":4},{"c":6,"sh":0,"x":3,"y":5},{"c":6,"sh":7,"x":3,"y":5},{"c":7,"sh":0,"x":5,"y":5},{"c":0,"sh":2,"x":0,"y":3},{"c":2,"sh":7,"x":0,"y":0},{"c":6,"sh":6,"x":0,"y":5},{"c":0,"sh":2,"x":1,"y":2},{"c":7,"sh":0,"x":5,"y":3},{"c":0,"sh":0,"x":5,"y":1},{"c":6,"sh":0,"x":3,"y":3},{"c":2,"sh":1,"x":3,"y":1}],"opt":18,"moves":23,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"B","p":1,"n":1,"c":7},{"s":"T","p":4,"n":1,"c":5},{"s":"L","p":1,"n":3,"c":1},{"s":"R","p":5,"n":1,"c":9}],"blocks":[{"c":5,"sh":0,"x":3,"y":4},{"c":4,"sh":8,"x":1,"y":0},{"c":7,"sh":0,"x":4,"y":0},{"c":4,"sh":6,"x":0,"y":5},{"c":4,"sh":3,"x":3,"y":6},{"c":9,"sh":1,"x":0,"y":3},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":8,"x":2,"y":1},{"c":1,"sh":5,"x":4,"y":4},{"c":1,"sh":2,"x":5,"y":1},{"c":1,"sh":1,"x":2,"y":5},{"c":4,"sh":3,"x":3,"y":3},{"c":4,"sh":3,"x":0,"y":4},{"c":4,"sh":2,"x":0,"y":1,"ax":2},{"c":9,"sh":0,"x":5,"y":0},{"c":5,"sh":0,"x":0,"y":0}],"opt":18,"moves":23,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[33],"gates":[{"s":"B","p":0,"n":2,"c":1},{"s":"L","p":5,"n":3,"c":5},{"s":"L","p":3,"n":1,"c":6},{"s":"R","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":0,"n":2,"c":3}],"blocks":[{"c":6,"sh":4,"x":5,"y":0},{"c":1,"sh":6,"x":3,"y":3},{"c":6,"sh":8,"x":3,"y":1},{"c":6,"sh":1,"x":1,"y":6},{"c":6,"sh":2,"x":0,"y":2},{"c":3,"sh":1,"x":0,"y":0},{"c":6,"sh":4,"x":0,"y":4},{"c":5,"sh":3,"x":1,"y":7,"ax":1},{"c":5,"sh":3,"x":3,"y":6},{"c":3,"sh":2,"x":2,"y":4},{"c":5,"sh":1,"x":4,"y":5},{"c":1,"sh":6,"x":4,"y":2},{"c":5,"sh":1,"x":4,"y":7},{"c":3,"sh":0,"x":1,"y":4},{"c":6,"sh":0,"x":3,"y":0},{"c":1,"sh":0,"x":2,"y":3},{"c":1,"sh":2,"x":1,"y":2}],"opt":19,"moves":24,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"R","p":1,"n":1,"c":2},{"s":"L","p":3,"n":1,"c":8},{"s":"L","p":5,"n":3,"c":3},{"s":"R","p":4,"n":1,"c":9},{"s":"B","p":1,"n":3,"c":0}],"blocks":[{"c":2,"sh":1,"x":3,"y":5},{"c":0,"sh":5,"x":1,"y":0,"ax":2},{"c":8,"sh":3,"x":0,"y":2},{"c":3,"sh":0,"x":3,"y":4},{"c":0,"sh":8,"x":4,"y":0},{"c":3,"sh":3,"x":0,"y":6},{"c":0,"sh":8,"x":0,"y":3},{"c":3,"sh":9,"x":3,"y":3},{"c":3,"sh":3,"x":3,"y":6},{"c":2,"sh":0,"x":2,"y":3},{"c":3,"sh":9,"x":1,"y":4},{"c":2,"sh":0,"x":5,"y":3},{"c":2,"sh":3,"x":2,"y":7},{"c":0,"sh":2,"x":5,"y":4},{"c":3,"sh":0,"x":5,"y":7,"ax":1},{"c":9,"sh":0,"x":1,"y":7},{"c":8,"sh":3,"x":3,"y":2}],"opt":19,"moves":24,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[19],"gates":[{"s":"B","p":0,"n":3,"c":4},{"s":"R","p":6,"n":2,"c":2},{"s":"T","p":1,"n":1,"c":1},{"s":"T","p":4,"n":2,"c":9}],"blocks":[{"c":4,"sh":9,"x":2,"y":1},{"c":4,"sh":3,"x":2,"y":3},{"c":4,"sh":1,"x":2,"y":7},{"c":4,"sh":1,"x":0,"y":4},{"c":9,"sh":6,"x":4,"y":0},{"c":1,"sh":0,"x":0,"y":7},{"c":1,"sh":4,"x":1,"y":0},{"c":9,"sh":1,"x":2,"y":6},{"c":4,"sh":4,"x":4,"y":5},{"c":4,"sh":7,"x":2,"y":4},{"c":1,"sh":2,"x":0,"y":0},{"c":4,"sh":2,"x":5,"y":2},{"c":2,"sh":0,"x":4,"y":4},{"c":4,"sh":2,"x":1,"y":6},{"c":4,"sh":8,"x":0,"y":5},{"c":4,"sh":0,"x":2,"y":2},{"c":9,"sh":0,"x":2,"y":0}],"opt":19,"moves":24,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":6,"n":2,"c":9},{"s":"R","p":2,"n":3,"c":0},{"s":"L","p":1,"n":1,"c":6},{"s":"B","p":2,"n":3,"c":2}],"blocks":[{"c":0,"sh":4,"x":1,"y":5},{"c":2,"sh":2,"x":0,"y":3},{"c":2,"sh":3,"x":0,"y":1},{"c":2,"sh":6,"x":3,"y":4},{"c":2,"sh":9,"x":3,"y":2},{"c":2,"sh":1,"x":2,"y":6,"ax":2},{"c":0,"sh":7,"x":4,"y":5},{"c":6,"sh":0,"x":5,"y":4},{"c":2,"sh":0,"x":4,"y":7},{"c":2,"sh":4,"x":5,"y":1},{"c":2,"sh":0,"x":3,"y":7},{"c":9,"sh":3,"x":1,"y":3},{"c":2,"sh":5,"x":3,"y":0},{"c":2,"sh":0,"x":2,"y":5},{"c":2,"sh":2,"x":0,"y":5},{"c":2,"sh":0,"x":5,"y":0},{"c":0,"sh":0,"x":1,"y":4},{"c":2,"sh":3,"x":0,"y":2}],"opt":20,"moves":25,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":2,"c":6},{"s":"B","p":4,"n":1,"c":5},{"s":"B","p":0,"n":3,"c":1},{"s":"L","p":0,"n":1,"c":0},{"s":"T","p":3,"n":2,"c":0},{"s":"R","p":3,"n":3,"c":4}],"blocks":[{"c":4,"sh":6,"x":1,"y":3},{"c":4,"sh":4,"x":3,"y":0},{"c":4,"sh":0,"x":0,"y":6},{"c":1,"sh":4,"x":4,"y":4},{"c":6,"sh":2,"x":5,"y":4},{"c":4,"sh":7,"x":2,"y":6},{"c":1,"sh":0,"x":2,"y":6},{"c":4,"sh":8,"x":3,"y":3},{"c":1,"sh":2,"x":1,"y":5},{"c":6,"sh":0,"x":0,"y":4,"ax":1},{"c":0,"sh":4,"x":2,"y":0},{"c":4,"sh":1,"x":4,"y":2},{"c":1,"sh":9,"x":0,"y":1},{"c":5,"sh":2,"x":0,"y":2},{"c":1,"sh":8,"x":4,"y":0},{"c":5,"sh":0,"x":1,"y":7},{"c":4,"sh":0,"x":3,"y":5},{"c":1,"sh":2,"x":5,"y":6}],"opt":20,"moves":25,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[10],"gates":[{"s":"L","p":4,"n":3,"c":2},{"s":"R","p":3,"n":1,"c":8},{"s":"L","p":0,"n":2,"c":8},{"s":"T","p":0,"n":3,"c":1},{"s":"B","p":2,"n":3,"c":1},{"s":"T","p":5,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":7},{"s":"R","p":0,"n":1,"c":5}],"blocks":[{"c":8,"sh":2,"x":0,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":2,"sh":4,"x":2,"y":2},{"c":8,"sh":6,"x":1,"y":5},{"c":1,"sh":0,"x":5,"y":4},{"c":1,"sh":6,"x":3,"y":3},{"c":7,"sh":2,"x":0,"y":6},{"c":1,"sh":6,"x":1,"y":0},{"c":2,"sh":9,"x":3,"y":6},{"c":2,"sh":7,"x":4,"y":2},{"c":7,"sh":0,"x":0,"y":3},{"c":2,"sh":0,"x":2,"y":5,"ax":1},{"c":1,"sh":0,"x":5,"y":6},{"c":1,"sh":8,"x":0,"y":4},{"c":8,"sh":1,"x":1,"y":7},{"c":8,"sh":0,"x":3,"y":1},{"c":8,"sh":0,"x":2,"y":0},{"c":1,"sh":0,"x":5,"y":5},{"c":5,"sh":0,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2},{"tier":"medium","w":6,"h":8,"walls":[],"gates":[{"s":"B","p":2,"n":1,"c":0},{"s":"T","p":3,"n":1,"c":3},{"s":"L","p":5,"n":3,"c":6},{"s":"R","p":0,"n":1,"c":9}],"blocks":[{"c":6,"sh":8,"x":2,"y":3},{"c":6,"sh":1,"x":0,"y":3},{"c":6,"sh":9,"x":2,"y":0},{"c":6,"sh":9,"x":4,"y":0},{"c":6,"sh":6,"x":4,"y":1},{"c":6,"sh":8,"x":1,"y":5},{"c":9,"sh":1,"x":3,"y":4},{"c":9,"sh":3,"x":3,"y":6},{"c":0,"sh":0,"x":1,"y":0},{"c":9,"sh":0,"x":0,"y":5},{"c":3,"sh":0,"x":1,"y":7},{"c":6,"sh":0,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":1},{"c":9,"sh":3,"x":1,"y":2},{"c":9,"sh":0,"x":2,"y":1},{"c":6,"sh":0,"x":5,"y":4},{"c":0,"sh":2,"x":2,"y":6},{"c":6,"sh":3,"x":3,"y":5,"ax":1},{"c":9,"sh":1,"x":3,"y":7}],"opt":21,"moves":26,"relocs":2},{"tier":"medium","w":6,"h":7,"walls":[8,9],"gates":[{"s":"L","p":4,"n":2,"c":9},{"s":"L","p":0,"n":1,"c":3},{"s":"B","p":3,"n":3,"c":1},{"s":"B","p":0,"n":1,"c":5},{"s":"R","p":4,"n":1,"c":7}],"blocks":[{"c":1,"sh":8,"x":3,"y":3,"ax":2},{"c":1,"sh":0,"x":1,"y":0},{"c":9,"sh":9,"x":4,"y":2},{"c":1,"sh":8,"x":0,"y":3},{"c":9,"sh":0,"x":3,"y":2},{"c":1,"sh":7,"x":4,"y":0},{"c":9,"sh":9,"x":1,"y":5},{"c":9,"sh":8,"x":3,"y":5},{"c":3,"sh":3,"x":2,"y":0,"ax":1},{"c":9,"sh":6,"x":0,"y":1},{"c":3,"sh":0,"x":0,"y":6},{"c":1,"sh":1,"x":4,"y":6},{"c":9,"sh":7,"x":1,"y":3}],"opt":16,"moves":21,"relocs":3},{"tier":"medium","w":6,"h":7,"walls":[],"gates":[{"s":"T","p":0,"n":3,"c":4},{"s":"L","p":3,"n":3,"c":6},{"s":"B","p":0,"n":1,"c":1},{"s":"L","p":0,"n":1,"c":2}],"blocks":[{"c":6,"sh":2,"x":4,"y":2},{"c":4,"sh":5,"x":3,"y":4},{"c":2,"sh":3,"x":0,"y":1},{"c":4,"sh":2,"x":1,"y":5,"ax":2},{"c":6,"sh":8,"x":0,"y":3},{"c":1,"sh":0,"x":0,"y":0},{"c":2,"sh":3,"x":3,"y":1},{"c":2,"sh":1,"x":4,"y":0},{"c":4,"sh":8,"x":2,"y":2},{"c":4,"sh":3,"x":3,"y":6},{"c":2,"sh":1,"x":0,"y":2},{"c":2,"sh":3,"x":1,"y":0},{"c":6,"sh":2,"x":2,"y":4,"ax":1}],"opt":17,"moves":22,"relocs":4},{"tier":"medium","w":6,"h":7,"walls":[33],"gates":[{"s":"L","p":2,"n":3,"c":7},{"s":"B","p":1,"n":1,"c":7},{"s":"R","p":5,"n":1,"c":6},{"s":"R","p":1,"n":3,"c":6},{"s":"T","p":2,"n":2,"c":0},{"s":"L","p":6,"n":1,"c":8}],"blocks":[{"c":6,"sh":7,"x":1,"y":3},{"c":8,"sh":3,"x":2,"y":6},{"c":7,"sh":2,"x":5,"y":0},{"c":6,"sh":3,"x":0,"y":1},{"c":7,"sh":6,"x":4,"y":4},{"c":0,"sh":4,"x":4,"y":1},{"c":6,"sh":6,"x":0,"y":4},{"c":7,"sh":2,"x":3,"y":3},{"c":6,"sh":0,"x":5,"y":2},{"c":7,"sh":7,"x":2,"y":1},{"c":8,"sh":0,"x":1,"y":6},{"c":0,"sh":0,"x":5,"y":3},{"c":8,"sh":0,"x":0,"y":6},{"c":6,"sh":2,"x":1,"y":2},{"c":8,"sh":1,"x":2,"y":0}],"opt":20,"moves":25,"relocs":5},{"tier":"medium","w":6,"h":7,"walls":[8,27],"gates":[{"s":"T","p":1,"n":3,"c":7},{"s":"B","p":1,"n":2,"c":5},{"s":"R","p":3,"n":1,"c":1},{"s":"L","p":1,"n":2,"c":8},{"s":"L","p":4,"n":2,"c":8}],"blocks":[{"c":5,"sh":1,"x":1,"y":4},{"c":7,"sh":1,"x":3,"y":3},{"c":8,"sh":2,"x":1,"y":5},{"c":5,"sh":7,"x":2,"y":1},{"c":8,"sh":3,"x":2,"y":0},{"c":5,"sh":8,"x":0,"y":1},{"c":7,"sh":1,"x":4,"y":6},{"c":5,"sh":4,"x":0,"y":4},{"c":5,"sh":1,"x":2,"y":6},{"c":7,"sh":1,"x":1,"y":3},{"c":8,"sh":3,"x":3,"y":5},{"c":7,"sh":1,"x":4,"y":1},{"c":8,"sh":7,"x":4,"y":3},{"c":8,"sh":0,"x":0,"y":3},{"c":8,"sh":0,"x":1,"y":0}],"opt":21,"moves":26,"relocs":6},{"tier":"medium","w":6,"h":8,"walls":[15,28],"gates":[{"s":"B","p":2,"n":2,"c":2},{"s":"T","p":0,"n":2,"c":4},{"s":"R","p":5,"n":2,"c":9},{"s":"L","p":3,"n":2,"c":9},{"s":"T","p":4,"n":2,"c":7},{"s":"R","p":2,"n":2,"c":7},{"s":"R","p":0,"n":1,"c":8}],"blocks":[{"c":9,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":4},{"c":9,"sh":1,"x":0,"y":2},{"c":9,"sh":8,"x":0,"y":5},{"c":7,"sh":1,"x":0,"y":3},{"c":4,"sh":9,"x":3,"y":5},{"c":7,"sh":9,"x":4,"y":2,"ax":1},{"c":9,"sh":0,"x":2,"y":1},{"c":7,"sh":3,"x":2,"y":0},{"c":9,"sh":2,"x":2,"y":4},{"c":4,"sh":9,"x":2,"y":3},{"c":7,"sh":1,"x":3,"y":1},{"c":8,"sh":0,"x":4,"y":3},{"c":9,"sh":2,"x":5,"y":6},{"c":2,"sh":9,"x":0,"y":0},{"c":2,"sh":2,"x":3,"y":6},{"c":7,"sh":1,"x":1,"y":6}],"opt":23,"moves":28,"relocs":6},{"tier":"hard","w":6,"h":8,"walls":[],"gates":[{"s":"T","p":1,"n":1,"c":7},{"s":"R","p":0,"n":3,"c":9},{"s":"L","p":3,"n":2,"c":3},{"s":"T","p":3,"n":3,"c":2},{"s":"B","p":2,"n":2,"c":8},{"s":"R","p":5,"n":3,"c":8}],"blocks":[{"c":3,"sh":1,"x":4,"y":2},{"c":9,"sh":3,"x":2,"y":4},{"c":8,"sh":8,"x":0,"y":5},{"c":8,"sh":8,"x":3,"y":0},{"c":9,"sh":11,"x":0,"y":1},{"c":3,"sh":7,"x":2,"y":6},{"c":2,"sh":2,"x":2,"y":2},{"c":9,"sh":7,"x":1,"y":5},{"c":8,"sh":0,"x":3,"y":2},{"c":3,"sh":0,"x":3,"y":3},{"c":9,"sh":0,"x":5,"y":3},{"c":3,"sh":7,"x":0,"y":3},{"c":3,"sh":1,"x":0,"y":7},{"c":2,"sh":7,"x":4,"y":0,"ax":2},{"c":2,"sh":5,"x":4,"y":6},{"c":3,"sh":0,"x":5,"y":5},{"c":3,"sh":0,"x":4,"y":3,"ax":1}],"opt":21,"moves":24,"relocs":4},{"tier":"hard","w":7,"h":8,"walls":[],"gates":[{"s":"L","p":3,"n":1,"c":2},{"s":"R","p":4,"n":1,"c":3},{"s":"L","p":5,"n":2,"c":3},{"s":"B","p":4,"n":1,"c":8},{"s":"R","p":2,"n":1,"c":4},{"s":"B","p":0,"n":3,"c":6}],"blocks":[{"c":4,"sh":3,"x":4,"y":1},{"c":3,"sh":3,"x":2,"y":5,"ax":1},{"c":3,"sh":1,"x":2,"y":6},{"c":3,"sh":7,"x":2,"y":3},{"c":2,"sh":1,"x":3,"y":0},{"c":3,"sh":7,"x":4,"y":3,"ice":3},{"c":6,"sh":10,"x":0,"y":1,"ax":2},{"c":6,"sh":6,"x":5,"y":5},{"c":3,"sh":11,"x":0,"y":0},{"c":6,"sh":0,"x":0,"y":5},{"c":4,"sh":1,"x":1,"y":2},{"c":4,"sh":3,"x":0,"y":7},{"c":4,"sh":0,"x":0,"y":6},{"c":3,"sh":6,"x":4,"y":6},{"c":3,"sh":0,"x":1,"y":6,"ice":2},{"c":3,"sh":0,"x":6,"y":0},{"c":8,"sh":0,"x":5,"y":0},{"c":8,"sh":2,"x":4,"y":2,"ax":2},{"c":6,"sh":1,"x":5,"y":2},{"c":6,"sh":1,"x":2,"y":1},{"c":8,"sh":4,"x":6,"y":3}],"opt":25,"moves":28,"relocs":4},{"tier":"hard","w":6,"h":9,"walls":[],"gates":[{"s":"R","p":1,"n":3,"c":2},{"s":"R","p":8,"n":1,"c":5},{"s":"B","p":4,"n":2,"c":5},{"s":"T","p":2,"n":3,"c":4},{"s":"L","p":6,"n":1,"c":4},{"s":"R","p":5,"n":1,"c":9},{"s":"B","p":0,"n":2,"c":7},{"s":"T","p":0,"n":1,"c":3}],"blocks":[{"c":2,"sh":12,"x":3,"y":0},{"c":2,"sh":1,"x":1,"y":6},{"c":2,"sh":11,"x":3,"y":3},{"c":2,"sh":9,"x":1,"y":4},{"c":2,"sh":11,"x":0,"y":7},{"c":2,"sh":9,"x":0,"y":2},{"c":2,"sh":2,"x":4,"y":6},{"c":7,"sh":4,"x":3,"y":4},{"c":4,"sh":0,"x":0,"y":0},{"c":7,"sh":0,"x":2,"y":2},{"c":5,"sh":8,"x":0,"y":5},{"c":3,"sh":0,"x":4,"y":1},{"c":5,"sh":7,"x":4,"y":7},{"c":2,"sh":7,"x":4,"y":1,"ax":1},{"c":9,"sh":0,"x":1,"y":0},{"c":4,"sh":0,"x":3,"y":8},{"c":4,"sh":0,"x":5,"y":4},{"c":4,"sh":9,"x":4,"y":5,"ice":4},{"c":9,"sh":1,"x":1,"y":1},{"c":7,"sh":0,"x":3,"y":2},{"c":4,"sh":0,"x":2,"y":0},{"c":2,"sh":0,"x":0,"y":3}],"opt":26,"moves":29,"relocs":4},{"tier":"hard","w":7,"h":9,"walls":[17,16],"gates":[{"s":"L","p":0,"n":2,"c":5},{"s":"T","p":5,"n":2,"c":3},{"s":"L","p":4,"n":1,"c":3},{"s":"R","p":4,"n":3,"c":7},{"s":"R","p":1,"n":1,"c":1},{"s":"T","p":2,"n":2,"c":4},{"s":"B","p":5,"n":2,"c":8}],"blocks":[{"c":3,"sh":6,"x":5,"y":0},{"c":5,"sh":12,"x":4,"y":5},{"c":4,"sh":7,"x":0,"y":1},{"c":5,"sh":1,"x":5,"y":2},{"c":7,"sh":12,"x":2,"y":3},{"c":7,"sh":6,"x":0,"y":4},{"c":8,"sh":2,"x":4,"y":0},{"c":7,"sh":7,"x":3,"y":7},{"c":7,"sh":9,"x":5,"y":7},{"c":3,"sh":0,"x":1,"y":6},{"c":5,"sh":3,"x":1,"y":7},{"c":1,"sh":0,"x":5,"y":3},{"c":1,"sh":1,"x":0,"y":8},{"c":4,"sh":0,"x":2,"y":0,"ax":2},{"c":7,"sh":8,"x":2,"y":5},{"c":4,"sh":0,"x":1,"y":4},{"c":1,"sh":0,"x":6,"y":6,"ice":3},{"c":8,"sh":0,"x":3,"y":4},{"c":1,"sh":3,"x":4,"y":4},{"c":3,"sh":0,"x":4,"y":2},{"c":4,"sh":0,"x":0,"y":6},{"c":4,"sh":0,"x":2,"y":8},{"c":5,"sh":2,"x":3,"y":0},{"c":8,"sh":0,"x":6,"y":3},{"c":5,"sh":0,"x":0,"y":7},{"c":8,"sh":0,"x":5,"y":6},{"c":5,"sh":2,"x":0,"y":0}],"opt":31,"moves":34,"relocs":4},{"tier":"superhard","w":7,"h":9,"walls":[25,31,39,8],"gates":[{"s":"R","p":3,"n":2,"c":2},{"s":"L","p":0,"n":3,"c":0},{"s":"B","p":0,"n":2,"c":0},{"s":"L","p":5,"n":3,"c":4},{"s":"B","p":4,"n":3,"c":5},{"s":"T","p":2,"n":2,"c":3},{"s":"R","p":6,"n":2,"c":3},{"s":"R","p":0,"n":1,"c":6},{"s":"T","p":5,"n":2,"c":7}],"blocks":[{"c":0,"sh":2,"x":0,"y":6},{"c":0,"sh":16,"x":0,"y":3},{"c":2,"sh":8,"x":5,"y":2},{"c":3,"sh":2,"x":6,"y":7},{"c":7,"sh":2,"x":2,"y":1},{"c":5,"sh":4,"x":5,"y":4},{"c":6,"sh":1,"x":0,"y":0,"ax":1},{"c":5,"sh":0,"x":4,"y":6},{"c":7,"sh":1,"x":3,"y":8},{"c":0,"sh":9,"x":3,"y":0},{"c":3,"sh":8,"x":2,"y":3},{"c":5,"sh":13,"x":1,"y":5},{"c":5,"sh":3,"x":3,"y":7},{"c":0,"sh":2,"x":6,"y":0},{"c":5,"sh":4,"x":6,"y":4},{"c":4,"sh":0,"x":1,"y":6,"ax":1,"ice":2},{"c":7,"sh":0,"x":1,"y":8},{"c":3,"sh":2,"x":5,"y":0},{"c":2,"sh":0,"x":0,"y":8},{"c":5,"sh":0,"x":1,"y":2},{"c":2,"sh":6,"x":3,"y":1},{"c":7,"sh":0,"x":0,"y":2,"ice":2},{"c":7,"sh":2,"x":3,"y":5},{"c":3,"sh":0,"x":6,"y":3}],"opt":31,"moves":32,"relocs":7,"time":228}];</script>
+<script>
+(function () {
+'use strict';
+const LEVELS = window.CS_LEVELS;
+const COLORS = ['#F2545B','#FF8A3D','#FFC93C','#9BD43A','#23B06A','#1FB5B0','#39A0F0','#4F63E8','#9A5BE8','#E9509F'];
+const TIER = { medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead' },
+               hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, locked arrows, ice' },
+               superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock' } };
+const $ = id => document.getElementById(id);
+const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f)); return `rgb(${c})`; };
+
+// ---------- storage (best effort) ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('colorshred:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('colorshred:' + k, JSON.stringify(v)); } catch (e) {} }
+};
+let stars = store.get('stars', {});      // levelIndex -> 1..3
+let soundOn = store.get('sound', true);
+
+// ---------- sound ----------
+let actx = null;
+function sfx(kind) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    if (kind === 'shred') {
+      const len = 0.35, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (0.6 + 0.4 * Math.sin(i / 40));
+      const src = actx.createBufferSource(); src.buffer = buf;
+      const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.8;
+      const g = actx.createGain(); g.gain.value = 0.35;
+      src.connect(f).connect(g).connect(actx.destination); src.start(t);
+    } else {
+      const o = actx.createOscillator(), g = actx.createGain();
+      const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15] };
+      const [fr, dur, vol] = map[kind];
+      o.type = kind === 'win' ? 'triangle' : 'square'; o.frequency.setValueAtTime(fr, t);
+      if (kind === 'win') o.frequency.exponentialRampToValueAtTime(fr * 2, t + dur);
+      if (kind === 'fail') o.frequency.exponentialRampToValueAtTime(fr / 2, t + dur);
+      g.gain.setValueAtTime(vol * 0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    }
+  } catch (e) {}
+}
+
+// ---------- home ----------
+function tierRange(t) { const idx = []; LEVELS.forEach((l, i) => { if (l.tier === t) idx.push(i); }); return idx; }
+function unlocked(i) {
+  const t = LEVELS[i].tier, r = tierRange(t), k = r.indexOf(i);
+  return k === 0 || !!stars[r[k - 1]] || !!stars[i];
+}
+function renderHome() {
+  const logo = $('logo');
+  if (!logo.dataset.done) {
+    logo.innerHTML = [...'ColorShred'].map((ch, i) => `<span style="color:${COLORS[[0,1,2,3,4,5,6,7,8,9][i]]}">${ch}</span>`).join('');
+    logo.dataset.done = 1;
+  }
+  const wrap = $('tiers'); wrap.innerHTML = '';
+  for (const t of ['medium', 'hard', 'superhard']) {
+    const r = tierRange(t); if (!r.length) continue;
+    const done = r.filter(i => stars[i]).length;
+    const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
+    sec.innerHTML = `<div class="tier-head"><h2 style="color:${TIER[t].color}">${TIER[t].name}</h2><small>${TIER[t].blurb}<br>${done}/${r.length} cleared</small></div><div class="grid"></div>`;
+    const g = sec.querySelector('.grid');
+    let nextMarked = false;
+    r.forEach(i => {
+      const b = document.createElement('button'); b.className = 'lv';
+      const ok = unlocked(i);
+      if (stars[i]) b.classList.add('done');
+      else if (ok && !nextMarked) { b.classList.add('next'); nextMarked = true; }
+      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${i + 1}, locked`); }
+      b.innerHTML = `${i + 1}<span class="st">${'★'.repeat(stars[i] || 0)}</span>`;
+      b.onclick = () => startLevel(i);
+      g.appendChild(b);
+    });
+    wrap.appendChild(sec);
+  }
+  $('soundBtn').textContent = 'Sound: ' + (soundOn ? 'on' : 'off');
+}
+
+// ---------- game state ----------
+let L = null, li = 0, ctx = null, pos = [], moves = 0, hist = [], timeLeft = 0, timer = null, over = false, busy = false;
+let cs = 40, gt = 20, els = [], hintEls = [];
+
+function startLevel(i) {
+  li = i; L = LEVELS[i];
+  ctx = CS.makeCtx(L); L.__ctx = ctx;
+  pos = ctx.blocks.map(b => b.y * L.w + b.x);
+  moves = 0; hist = []; over = false; busy = false;
+  timeLeft = L.time || 0;
+  $('home').hidden = true; $('play').hidden = false; hideOverlay();
+  $('lvName').textContent = 'Level ' + (i + 1);
+  $('lvTier').textContent = TIER[L.tier].name; $('play').style.setProperty('--tc', TIER[L.tier].color);
+  $('timeStat').hidden = !L.time;
+  buildBoard(); updateHud();
+  clearInterval(timer);
+  if (L.time) timer = setInterval(tick, 1000);
+  if (!store.get('seenRules', false)) { showRules(); store.set('seenRules', true); }
+}
+function tick() {
+  if (over || !$('overlay').hidden) return;
+  timeLeft--; updateHud();
+  if (timeLeft <= 0) lose("Time's up", 'The clock beat you this round.');
+}
+function updateHud() {
+  const left = L.moves - moves;
+  $('movesLeft').textContent = left;
+  $('movesStat').classList.toggle('warn', left <= 2);
+  $('blocksLeft').textContent = pos.filter(p => p >= 0).length;
+  if (L.time) { $('timeLeft').textContent = Math.floor(timeLeft / 60) + ':' + String(Math.max(0, timeLeft) % 60).padStart(2, '0'); $('timeStat').classList.toggle('warn', timeLeft <= 15); }
+  $('undoBtn').disabled = !hist.length;
+  const removed = CS.removedCount(pos);
+  ctx.blocks.forEach((b, i) => {
+    if (!b.ice || !els[i]) return;
+    const n = b.ice - removed;
+    els[i].querySelectorAll('.ice').forEach((ic, k) => { ic.style.opacity = n <= 0 ? 0 : 1; if (k === 0 && n > 0) ic.textContent = n; });
+  });
+}
+
+// ---------- board ----------
+const ARROW = d => ({ L: 'M15 5l-7 7 7 7', R: 'M9 5l7 7-7 7', T: 'M5 15l7-7 7 7', B: 'M5 9l7 7 7-7' })[d];
+function buildBoard() {
+  const stage = $('stage'); stage.innerHTML = '';
+  const W = L.w, H = L.h;
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  cs = Math.floor(Math.min(Math.min(sw, 560) / (W + 0.9), sh / (H + 0.9)));
+  gt = Math.round(cs * 0.45);
+  const frame = document.createElement('div'); frame.className = 'frame';
+  frame.style.setProperty('--cs', cs + 'px');
+  frame.style.width = (W * cs + 2 * gt) + 'px'; frame.style.height = (H * cs + 2 * gt) + 'px';
+  const field = document.createElement('div'); field.className = 'field';
+  Object.assign(field.style, { left: gt + 'px', top: gt + 'px', width: W * cs + 'px', height: H * cs + 'px' });
+  frame.appendChild(field);
+  for (const wi of L.walls) {
+    const d = document.createElement('div'); d.className = 'wall';
+    const pad = Math.round(cs * 0.06);
+    Object.assign(d.style, { left: (wi % W) * cs + pad + 'px', top: Math.floor(wi / W) * cs + pad + 'px', width: cs - 2 * pad + 'px', height: cs - 2 * pad + 'px' });
+    field.appendChild(d);
+  }
+  L.gates.forEach((g, gi) => {
+    const d = document.createElement('div'); const vert = g.s === 'L' || g.s === 'R';
+    d.className = 'gate ' + (vert ? 'v' : 'h'); d.style.setProperty('--gc', COLORS[g.c]); d.dataset.gi = gi;
+    const inset = 3;
+    if (vert) Object.assign(d.style, { top: gt + g.p * cs + inset + 'px', height: g.n * cs - 2 * inset + 'px', width: gt - 4 + 'px', left: (g.s === 'L' ? 2 : gt + W * cs + 2) + 'px' });
+    else Object.assign(d.style, { left: gt + g.p * cs + inset + 'px', width: g.n * cs - 2 * inset + 'px', height: gt - 4 + 'px', top: (g.s === 'T' ? 2 : gt + H * cs + 2) + 'px' });
+    d.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="${ARROW(g.s)}"/></svg>`;
+    frame.appendChild(d);
+  });
+  els = ctx.blocks.map((b, i) => {
+    const el = makeShape(b, false);
+    el.dataset.i = i;
+    field.appendChild(el);
+    return el;
+  });
+  stage.appendChild(frame);
+  ctx.field = field; ctx.frame = frame;
+  els.forEach((el, i) => { if (pos[i] < 0) el.remove(); else place(i, false); });
+  field.addEventListener('pointerdown', onDown);
+}
+function makeShape(b, ghost) {
+  const si = CS.shapeInfo[b.sh], set = new Set(si.cells.map(([x, y]) => x + ',' + y));
+  const has = (x, y) => set.has(x + ',' + y);
+  const el = document.createElement('div'); el.className = ghost ? 'ghost' : 'block';
+  el.style.width = si.w * cs + 'px'; el.style.height = si.h * cs + 'px';
+  el.style.setProperty('--bc', COLORS[b.c]); el.style.setProperty('--bd', shade(COLORS[b.c], 0.68));
+  const r = Math.round(cs * 0.22), m = Math.max(2, Math.round(cs * 0.05));
+  for (const [x, y] of si.cells) {
+    const c = document.createElement('div'); c.className = 'cell';
+    const up = has(x, y - 1), dn = has(x, y + 1), lf = has(x - 1, y), rt = has(x + 1, y);
+    Object.assign(c.style, {
+      left: x * cs + (lf ? 0 : m) + 'px', top: y * cs + (up ? 0 : m) + 'px',
+      width: cs - (lf ? 0 : m) - (rt ? 0 : m) + 'px', height: cs - (up ? 0 : m) - (dn ? 0 : m) + 'px',
+      borderRadius: `${!up && !lf ? r : 0}px ${!up && !rt ? r : 0}px ${!dn && !rt ? r : 0}px ${!dn && !lf ? r : 0}px`,
+    });
+    const sh = [];
+    if (!dn) sh.push(`inset 0 ${-Math.round(cs * .09)}px 0 var(--bd)`);
+    if (!up) sh.push(`inset 0 ${Math.round(cs * .05)}px 0 #ffffff40`);
+    c.style.boxShadow = sh.join(',') || 'none';
+    el.appendChild(c);
+  }
+  if (!ghost && b.ax) {
+    const g = document.createElement('div'); g.className = 'glyph';
+    Object.assign(g.style, { left: 0, top: 0, width: '100%', height: '100%' });
+    // place glyph on first cell for irregular shapes; centered for rectangles
+    if (si.cells.length !== si.w * si.h) { const [x, y] = si.cells[0]; Object.assign(g.style, { left: x * cs + 'px', top: y * cs + 'px', width: cs + 'px', height: cs + 'px' }); }
+    g.innerHTML = b.ax === 1
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>';
+    el.appendChild(g);
+  }
+  if (!ghost && b.ice) {
+    for (const [x, y] of si.cells) {
+      const ic = document.createElement('div'); ic.className = 'ice';
+      Object.assign(ic.style, { inset: 'auto', left: x * cs + 2 + 'px', top: y * cs + 2 + 'px', width: cs - 4 + 'px', height: cs - 4 + 'px', borderRadius: Math.round(cs * .2) + 'px' });
+      if (x !== si.cells[0][0] || y !== si.cells[0][1]) ic.style.fontSize = 0;
+      el.appendChild(ic);
+    }
+    // keep one numbered ice label reachable for updateHud
+  }
+  return el;
+}
+function place(i, anim) {
+  const el = els[i]; const a = pos[i];
+  el.style.transition = anim === false ? 'none' : '';
+  el.style.transform = `translate(${(a % L.w) * cs}px, ${Math.floor(a / L.w) * cs}px)`;
+  if (anim === false) { void el.offsetWidth; el.style.transition = ''; }
+}
+// exit sides available for block i at anchor a
+function exitSides(i, a) {
+  const b = ctx.blocks[i], si = CS.shapeInfo[b.sh], x = a % L.w, y = Math.floor(a / L.w), out = [];
+  for (const g of L.gates) {
+    if (g.c !== b.c) continue;
+    const s = CS.exitAt({ w: L.w, h: L.h, gates: [g] }, b, si, x, y);
+    if (s) out.push(s);
+  }
+  return out;
+}
+
+// ---------- input ----------
+let drag = null;
+function blockAt(ev) {
+  const r = ctx.field.getBoundingClientRect();
+  const cx = Math.floor((ev.clientX - r.left) / cs), cy = Math.floor((ev.clientY - r.top) / cs);
+  if (cx < 0 || cy < 0 || cx >= L.w || cy >= L.h) return -1;
+  return CS.occupancy(ctx, pos)[cy * L.w + cx];
+}
+function onDown(ev) {
+  if (over || busy || drag) return;
+  const i = blockAt(ev); if (i < 0) return;
+  clearHint();
+  if (CS.frozen(ctx, pos, i)) { shake(i); sfx('bump'); toast(`Frozen. Shred ${ctx.blocks[i].ice - CS.removedCount(pos)} more block(s) to thaw it.`); return; }
+  ev.preventDefault();
+  ctx.field.setPointerCapture(ev.pointerId);
+  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i], cur: pos[i] };
+  els[i].classList.add('grab');
+  ctx.field.addEventListener('pointermove', onMove);
+  ctx.field.addEventListener('pointerup', onUp);
+  ctx.field.addEventListener('pointercancel', onUp);
+}
+function onMove(ev) {
+  if (!drag || ev.pointerId !== drag.id) return;
+  const i = drag.i, W = L.w, ax = ctx.blocks[i].ax;
+  const sx = drag.start % W, sy = Math.floor(drag.start / W);
+  let tx = sx + Math.round((ev.clientX - drag.sx) / cs), ty = sy + Math.round((ev.clientY - drag.sy) / cs);
+  if (ax === 1) ty = sy; if (ax === 2) tx = sx;
+  const occ = CS.occupancy(ctx, pos);
+  let moved = false;
+  for (let step = 0; step < 60; step++) {
+    const x = pos[i] % W, y = Math.floor(pos[i] / W);
+    const ddx = tx - x, ddy = ty - y;
+    if (!ddx && !ddy) break;
+    const cand = [];
+    if (ddx) cand.push([Math.sign(ddx), 0, Math.abs(ddx)]);
+    if (ddy) cand.push([0, Math.sign(ddy), Math.abs(ddy)]);
+    cand.sort((a, b) => b[2] - a[2]);
+    let ok = false;
+    for (const [dx, dy] of cand) {
+      const nx = x + dx, ny = y + dy, si = CS.shapeInfo[ctx.blocks[i].sh];
+      const outside = nx < 0 || ny < 0 || nx + si.w > W || ny + si.h > L.h;
+      if (outside) {
+        const side = dx < 0 ? 'L' : dx > 0 ? 'R' : dy < 0 ? 'T' : 'B';
+        if (exitSides(i, pos[i]).includes(side)) { finishDrag(side); return; }
+        continue;
+      }
+      if (CS.fits(ctx, occ, i, nx, ny)) { pos[i] = ny * W + nx; ok = true; moved = true; break; }
+    }
+    if (!ok) break;
+  }
+  if (moved) { place(i); sfx('tick'); }
+}
+function onUp(ev) {
+  if (!drag || ev.pointerId !== drag.id) return;
+  const sides = exitSides(drag.i, pos[drag.i]);
+  finishDrag(sides[0] || null);
+}
+function finishDrag(exitSide) {
+  const { i, start } = drag;
+  ctx.field.removeEventListener('pointermove', onMove);
+  ctx.field.removeEventListener('pointerup', onUp);
+  ctx.field.removeEventListener('pointercancel', onUp);
+  try { ctx.field.releasePointerCapture(drag.id); } catch (e) {}
+  els[i].classList.remove('grab');
+  drag = null;
+  if (!exitSide && pos[i] === start) return;
+  hist.push({ pos: pos.slice(), moves, from: start, i });
+  hist[hist.length - 1].pos[i] = start;
+  moves++;
+  if (exitSide) shredBlock(i, exitSide);
+  else { updateHud(); checkEnd(); }
+}
+
+function shredBlock(i, side) {
+  busy = true;
+  const el = els[i], a = pos[i], si = CS.shapeInfo[ctx.blocks[i].sh];
+  const x = a % L.w, y = Math.floor(a / L.w);
+  const off = { L: [-(si.w + 0.3), 0], R: [si.w + 0.3, 0], T: [0, -(si.h + 0.3)], B: [0, si.h + 0.3] }[side];
+  el.classList.add('exiting');
+  el.style.transform = `translate(${(x + off[0]) * cs}px, ${(y + off[1]) * cs}px)`;
+  pos[i] = -1;
+  sfx('shred');
+  // which gate
+  const gi = L.gates.findIndex(g => g.c === ctx.blocks[i].c && g.s === side && (side === 'L' || side === 'R' ? (y >= g.p && y + si.h <= g.p + g.n) : (x >= g.p && x + si.w <= g.p + g.n)));
+  const gEl = ctx.frame.querySelector(`.gate[data-gi="${gi}"]`);
+  if (gEl) { gEl.classList.remove('pulse'); void gEl.offsetWidth; gEl.classList.add('pulse'); spawnShreds(gEl, side, COLORS[ctx.blocks[i].c]); }
+  setTimeout(() => { el.remove(); busy = false; updateHud(); checkEnd(); }, 300);
+  updateHud();
+}
+function spawnShreds(gEl, side, color) {
+  const fr = ctx.frame, gx = gEl.offsetLeft, gy = gEl.offsetTop, gw = gEl.offsetWidth, gh = gEl.offsetHeight;
+  const dir = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] }[side];
+  const vert = side === 'L' || side === 'R';
+  for (let k = 0; k < 16; k++) {
+    const s = document.createElement('div'); s.className = 'shred'; s.style.background = k % 4 ? color : '#ffffff';
+    const along = Math.random();
+    const w = vert ? cs * 0.5 : 4, h = vert ? 4 : cs * 0.5;
+    Object.assign(s.style, { width: w + 'px', height: h + 'px',
+      left: (vert ? gx + gw / 2 - w / 2 : gx + along * gw) + 'px', top: (vert ? gy + along * gh : gy + gh / 2 - h / 2) + 'px' });
+    fr.appendChild(s);
+    const dist = cs * (0.8 + Math.random() * 1.4), spread = (Math.random() - 0.5) * cs * 1.2;
+    const tx = dir[0] * dist + (vert ? 0 : spread), ty = dir[1] * dist + (vert ? spread : 0);
+    const anim = s.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 },
+      { transform: `translate(${tx}px, ${ty}px) rotate(${(Math.random() - .5) * 540}deg)`, opacity: 0 }],
+      { duration: 500 + Math.random() * 400, delay: 120 + Math.random() * 120, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'both' });
+    anim.onfinish = () => s.remove();
+  }
+}
+function shake(i) { const e = els[i]; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); }
+
+function checkEnd() {
+  if (over) return;
+  const left = pos.filter(p => p >= 0).length;
+  if (!left) return win();
+  if (moves >= L.moves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
+}
+function win() {
+  over = true; clearInterval(timer); sfx('win');
+  const extra = moves - L.opt;
+  const s = extra <= 0 ? 3 : extra <= (L.tier === 'medium' ? 2 : 1) ? 2 : 1;
+  stars[li] = Math.max(stars[li] || 0, s); store.set('stars', stars);
+  const next = li + 1 < LEVELS.length && LEVELS[li + 1].tier === L.tier ? li + 1 : nextTierStart();
+  showCard(`<div class="stars">${[1,2,3].map(k => `<span class="${k <= s ? 'on' : ''}">★</span>`).join('')}</div>
+    <h3>Shredded!</h3><p>${moves} moves. The best possible is ${L.opt}.</p>
+    ${next != null ? `<button class="btn" id="nextBtn">Next level</button>` : `<p>You cleared the last level.</p>`}
+    <button class="btn alt" id="replayBtn">Replay</button><button class="btn alt" id="menuBtn">Levels</button>`);
+  if (next != null) $('nextBtn').onclick = () => startLevel(next);
+  $('replayBtn').onclick = () => startLevel(li); $('menuBtn').onclick = goHome;
+}
+function nextTierStart() { for (let k = li + 1; k < LEVELS.length; k++) if (LEVELS[k].tier !== L.tier) return k; return null; }
+function lose(title, msg) {
+  over = true; clearInterval(timer); sfx('fail');
+  showCard(`<h3>${title}</h3><p>${msg}</p><button class="btn" id="retryBtn">Try again</button>
+    ${hist.length ? '<button class="btn alt" id="undoLose">Undo last move</button>' : ''}<button class="btn alt" id="menuBtn">Levels</button>`);
+  $('retryBtn').onclick = () => startLevel(li); $('menuBtn').onclick = goHome;
+  const u = $('undoLose'); if (u) u.onclick = () => { if (title === "Time's up") timeLeft = Math.max(timeLeft, 15); over = false; hideOverlay(); undo(); if (L.time) { clearInterval(timer); timer = setInterval(tick, 1000); } };
+}
+
+// ---------- controls ----------
+function undo() {
+  if (!hist.length || busy || drag) return;
+  clearHint();
+  const h = hist.pop();
+  const wasRemoved = pos[h.i] < 0;
+  pos = h.pos; moves = h.moves;
+  if (wasRemoved) { // re-create element
+    const el = makeShape(ctx.blocks[h.i], false); el.dataset.i = h.i; els[h.i] = el; ctx.field.appendChild(el); place(h.i, false);
+  } else place(h.i);
+  updateHud();
+}
+function clearHint() { hintEls.forEach(e => e.classList ? (e.classList.contains('ghost') ? e.remove() : e.classList.remove('hint')) : 0); hintEls = []; }
+function hint() {
+  if (over || busy || drag) return;
+  clearHint();
+  // 1) a block that can shred right now?
+  const occ = CS.occupancy(ctx, pos);
+  for (let i = 0; i < pos.length; i++) {
+    if (pos[i] < 0 || CS.frozen(ctx, pos, i)) continue;
+    const r = CS.reachable(ctx, occ, pos, i);
+    const a = r.find(a => CS.canExitFrom(ctx, i, a));
+    if (a != null) return showHint(i, a, 'Drag the glowing block into its gate.');
+  }
+  const res = CS.solve(L, pos, 40000);
+  if (!res) return toast('This one is too tangled for a hint right now. Try Undo.');
+  if (res.unsolvable) return toast('No way out from here. Undo or restart.');
+  const st = res.plan[0];
+  showHint(st.i, st.to, `Move the glowing block to the outlined spot. Best finish from here: ${res.relocs + pos.filter(p => p >= 0).length} moves.`);
+}
+function showHint(i, a, msg) {
+  els[i].classList.add('hint'); hintEls.push(els[i]);
+  if (a !== pos[i]) {
+    const g = makeShape(ctx.blocks[i], true);
+    g.style.transform = `translate(${(a % L.w) * cs}px, ${Math.floor(a / L.w) * cs}px)`;
+    ctx.field.appendChild(g); hintEls.push(g);
+  }
+  toast(msg);
+}
+let toastT = null;
+function toast(msg) {
+  let t = document.querySelector('.toast');
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; $('play').appendChild(t); }
+  t.textContent = msg; t.style.opacity = 1;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = 0; }, 2600);
+}
+
+function showCard(html) { $('card').innerHTML = html; $('overlay').hidden = false; }
+function hideOverlay() { $('overlay').hidden = true; }
+function showRules() {
+  showCard(`<h3>How to play</h3><div class="rules">
+    <div><b>1</b><span>Drag a block. It slides around other blocks and stops at walls.</span></div>
+    <div><b>2</b><span>Push it into a gate of the same color to shred it. The block must fit inside the gate's width.</span></div>
+    <div><b>3</b><span>Arrow blocks only slide the way their arrows point. Ice blocks thaw after you shred the number of blocks shown.</span></div>
+    <div><b>4</b><span>Every drag uses one move. Clear the board before you run out. Superhard levels also have a clock.</span></div>
+  </div><button class="btn" id="okBtn">Got it</button>`);
+  $('okBtn').onclick = hideOverlay;
+}
+function goHome() { clearInterval(timer); hideOverlay(); clearHint(); $('play').hidden = true; $('home').hidden = false; renderHome(); }
+
+$('backBtn').onclick = goHome;
+$('undoBtn').onclick = undo;
+$('restartBtn').onclick = () => startLevel(li);
+$('hintBtn').onclick = hint;
+$('helpBtn').onclick = showRules;
+$('howBtn').onclick = showRules;
+$('soundBtn').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); renderHome(); };
+let rT = null;
+window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('play').hidden && L) { clearHint(); buildBoard(); updateHud(); } }, 120); });
+document.addEventListener('gesturestart', e => e.preventDefault());
+renderHome();
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => L, cs: () => cs, moves: () => moves, start: startLevel };
+})();
+</script>
