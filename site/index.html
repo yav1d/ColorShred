@@ -630,6 +630,9 @@ const TIERS = {
   expert:    { w: [7, 7], h: [8, 9], colors: [5, 7], walls: [1, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.25, iceP: 0.1, fill: [0.84, 0.9], target: [5, 7], tries: 160 },
   master:    { w: [7, 7], h: [9, 10], colors: [6, 8], walls: [1, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.3, iceP: 0.1, fill: [0.86, 0.93], target: [6, 99], tries: 200 },
   legend:    { w: [7, 7], h: [9, 10], colors: [7, 8], walls: [2, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.35, iceP: 0.14, fill: [0.88, 0.94], target: [7, 99], tries: 240 },
+  blitz:     { w: [6, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.25, iceP: 0.06, fill: [0.82, 0.9], target: [4, 6], tries: 140 },
+  frozen:    { w: [7, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.2, iceP: 0.4, fill: [0.82, 0.9], target: [4, 7], tries: 160 },
+  mythic:    { w: [7, 7], h: [8, 9], colors: [5, 7], walls: [1, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.6, iceP: 0.08, fill: [0.82, 0.9], target: [5, 9], tries: 180 },
 };
 
 function soloOk(lvl, b) {
@@ -782,7 +785,7 @@ const SYMBOLS = [
   '<path d="M12 21.5S2.5 15.6 2.5 9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.5 3c0 6.6-9.5 12.5-9.5 12.5z"/>', // pink: heart
 ];
 const symSvg = (c, cls, style) => `<svg class="${cls || 'sym'}" viewBox="0 0 24 24"${style ? ` style="${style}"` : ''}>${SYMBOLS[c]}</svg>`;
-const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'master', 'legend'];
+const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'master', 'legend', 'blitz', 'frozen', 'mythic'];
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
@@ -791,6 +794,9 @@ const TIER = {
   expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
   master: { name: 'Master', color: '#9A5BE8', blurb: 'Two spare moves and a clock', reward: 60 },
   legend: { name: 'Legend', color: '#FFC93C', blurb: 'The toughest boards in the game', reward: 80 },
+  blitz: { name: 'Blitz', color: '#FF8A3D', blurb: 'A very short clock. Think fast!', reward: 60, season: 3 },
+  frozen: { name: 'Frozen', color: '#39A0F0', blurb: 'Ice everywhere. Plan the thaw.', reward: 70 },
+  mythic: { name: 'Mythic', color: '#E9509F', blurb: 'Arrow blocks, and only a perfect solve counts', reward: 100 },
   unstoppable: { name: 'Unstoppable', color: '#E9509F' },
 };
 const $ = id => document.getElementById(id);
@@ -1272,7 +1278,11 @@ function renderLevels() {
     const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
     if (!r.length) continue;
     const done = r.filter(cleared).length;
-    if (TIER[t].season === 2) wrap.insertAdjacentHTML('beforeend', `<div class="season"><b>Season 2</b><span>${LEVELS.filter(l => TIER[l.tier].season || TIERS.indexOf(l.tier) > TIERS.indexOf('superhard')).length} new levels</span></div>`);
+    if (TIER[t].season) { // a new season starts at this tier: count its levels up to the next season
+      const from = TIERS.indexOf(t), to = TIERS.findIndex((x, k) => k > from && TIER[x].season);
+      const tiers = TIERS.slice(from, to < 0 ? undefined : to), n = LEVELS.filter(l => tiers.includes(l.tier)).length;
+      wrap.insertAdjacentHTML('beforeend', `<div class="season"><b>Season ${TIER[t].season}</b><span>${n} levels</span></div>`);
+    }
     const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
     sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
     const g = sec.querySelector('.grid');
