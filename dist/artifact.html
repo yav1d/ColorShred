@@ -1494,6 +1494,8 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrent(); });
 applyTheme();
 renderWelcome();
+// Ask the phone to keep this game's saved data instead of clearing it when storage runs low
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
 // Tip for Safari users who opened the web address but haven't installed it yet
 try {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
