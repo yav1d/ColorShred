@@ -1037,7 +1037,7 @@ function sparkleTryAgain(ac, t) {
   note(ac, out, 'sine', nt(21), t + 0.6, 0.02, 0.5); // a faint glint of hope on the last note
 }
 // ---- Losing sound candidates (out of moves / time). The current arcade one stays until one is picked.
-const LOSE_STYLE = 'arcade';
+const LOSE_STYLE = 'rewind'; // chosen: Rewind (tape swoosh backwards, then a bouncy "ba-dum!")
 function brass(ac, out, f, t0, len, v, vib) { // muted brass: a saw whose filter opens and closes like a plunger mute
   const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
   lp.type = 'lowpass'; lp.Q.value = 6; lp.frequency.setValueAtTime(350, t0); lp.frequency.exponentialRampToValueAtTime(1500, t0 + 0.08); lp.frequency.exponentialRampToValueAtTime(500, t0 + len);
