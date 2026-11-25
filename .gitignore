@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 shred-sound-preview.wav
 sound-options/
+levels-wip/*.log
