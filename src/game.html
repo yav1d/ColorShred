@@ -889,7 +889,7 @@ function prefetch(stage) {
 }
 function startUnstoppable() {
   mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true };
-  timeLeft = 120; over = false; busy = false; armed = null; hist = [];
+  timeLeft = 90; over = false; busy = false; armed = null; hist = [];
   show('play');
   $('lvName').textContent = 'Stage 1'; $('lvTier').textContent = 'Unstoppable'; $('play').style.setProperty('--tc', TIER.unstoppable.color);
   $('movesLabel').textContent = 'Cleared';
@@ -911,7 +911,10 @@ function loadUnstoppableBoard() {
   prefetch(U.stage + 1);
 }
 function unstoppableClear() {
-  const bonus = 12 + W.blocks.length * 2, coins = 5 + Math.floor(U.stage / 2);
+  // Time bonus: 10 seconds, plus more for harder boards (extra moves the board needed, and its size), up to 30 seconds.
+  const relocs = W.opt - W.blocks.length;
+  const bonus = 10 + Math.min(20, relocs * 2 + Math.floor(Math.max(0, W.blocks.length - 10) / 3));
+  const coins = 5 + Math.floor(U.stage / 2);
   U.cleared++; U.earned += coins; timeLeft += bonus;
   setCoins(S.coins + coins, true); sfx('coin');
   flash(`+${bonus}s`);
