@@ -826,7 +826,22 @@ function applyTheme() {
 }
 
 // ---------- sound ----------
-let actx = null;
+let actx = null, master = null, winTimers = [];
+// All game sounds play through one master volume, so they can be cut the moment you leave a screen.
+function dest(ac) {
+  if (ac !== actx) return ac.destination; // sound previews rendered offline
+  if (!master) { master = actx.createGain(); master.connect(actx.destination); }
+  return master;
+}
+// Stop the win/lose sounds right away (and any still waiting to play), e.g. when tapping Next level.
+function cutSounds() {
+  winTimers.forEach(clearTimeout); winTimers = [];
+  if (actx && master) {
+    const m = master; master = null;
+    try { m.gain.setTargetAtTime(0, actx.currentTime, 0.012); } catch (e) {}
+    setTimeout(() => { try { m.disconnect(); } catch (e) {} }, 250);
+  }
+}
 // Shredding: a chunky paper "brrrt" through the teeth, a soft thunk for weight, and a bright chime on top.
 // The chime climbs a happy (pentatonic) scale while you keep shredding in quick succession: a little
 // streak that makes you want the next one. A short pause starts the scale over.
@@ -841,7 +856,7 @@ function comboStep() {
 // Three shred sounds to choose from in Settings. All of them climb the scale on a streak.
 const SHRED_SOUNDS = { paper: 'Paper rip', bubble: 'Bubble pop', arcade: 'Arcade bling' };
 function shredSound(ac, t, step, style) {
-  const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+  const out = ac.createGain(); out.gain.value = 0.9; out.connect(dest(ac));
   style = style || S.shredStyle || 'arcade';
   if (style === 'bubble') return bubbleShred(ac, t, step, out);
   if (style === 'arcade') return arcadeShred(ac, t, step, out);
@@ -883,7 +898,7 @@ function arcadeShred(ac, t, step, out) {
 // Arcade jingles for winning (always arcade style). Notes are in Hz, built from C5.
 const C5 = 523.25, nt = st => C5 * Math.pow(2, st / 12);
 function jingleOut(ac) {
-  const out = ac.createGain(); out.gain.value = 2.0; out.connect(ac.destination);
+  const out = ac.createGain(); out.gain.value = 2.0; out.connect(dest(ac));
   const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000; lp.connect(out);
   return { out, lp };
 }
@@ -949,9 +964,9 @@ function verb(ac, secs, wet) { // small generated room echo
   const len = Math.floor(ac.sampleRate * secs), ir = ac.createBuffer(2, len, ac.sampleRate);
   for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
   const cv = ac.createConvolver(); cv.buffer = ir; const g = ac.createGain(); g.gain.value = wet;
-  cv.connect(g).connect(ac.destination); return cv;
+  cv.connect(g).connect(dest(ac)); return cv;
 }
-function bus(ac, vol, wet, secs) { const g = ac.createGain(); g.gain.value = vol; g.connect(ac.destination); if (wet) g.connect(verb(ac, secs || 1.6, wet)); return g; }
+function bus(ac, vol, wet, secs) { const g = ac.createGain(); g.gain.value = vol; g.connect(dest(ac)); if (wet) g.connect(verb(ac, secs || 1.6, wet)); return g; }
 function bell(ac, out, f, t0, v, len) { // glass bell: a few inharmonic partials, the high ones fade first
   [[1, 1, 1], [2.76, 0.45, 0.6], [5.4, 0.22, 0.35], [8.93, 0.1, 0.2]].forEach(([m, a, dl]) => note(ac, out, 'sine', f * m, t0, v * a, (len || 1.4) * dl));
 }
@@ -1191,7 +1206,7 @@ function sfx(kind) {
       const src = actx.createBufferSource(); src.buffer = buf;
       const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; f.Q.value = 0.8;
       const g = actx.createGain(); g.gain.value = 0.35;
-      src.connect(f).connect(g).connect(actx.destination); src.start(t);
+      src.connect(f).connect(g).connect(dest(actx)); src.start(t);
     } else {
       const o = actx.createOscillator(), g = actx.createGain();
       const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
@@ -1201,7 +1216,7 @@ function sfx(kind) {
       if (kind === 'coin') o.frequency.setValueAtTime(fr * 1.5, t + 0.07);
       if (kind === 'fail') o.frequency.exponentialRampToValueAtTime(fr / 2, t + dur);
       g.gain.setValueAtTime(vol * 0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+      o.connect(g).connect(dest(actx)); o.start(t); o.stop(t + dur);
     }
   } catch (e) {}
 }
@@ -1210,6 +1225,7 @@ function sfx(kind) {
 const SCREENS = ['welcome', 'levels', 'colors', 'play'];
 function show(name) { SCREENS.forEach(s => { $(s).hidden = s !== name; }); hideOverlay(); }
 function renderWelcome() {
+  cutSounds();
   const logo = $('logo');
   if (!logo.dataset.done) { logo.innerHTML = [...'ColorShred'].map((ch, i) => `<span style="color:${COLORS[i]}">${ch}</span>`).join(''); logo.dataset.done = 1; }
   const fl = $('floaters');
@@ -1227,6 +1243,7 @@ function renderWelcome() {
 }
 const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 function renderLevels() {
+  cutSounds();
   const wrap = $('tiers'); wrap.innerHTML = '';
   if (allDone()) wrap.insertAdjacentHTML('beforeend', `<div class="banner"><b>Complete!</b><br><span class="note">You beat all ${LEVELS.length} levels. Unstoppable mode is waiting.</span></div>`);
   const next = nextLevel();
@@ -1285,6 +1302,7 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function rebuildCtx() { const f = ctx && ctx.field, fr = ctx && ctx.frame; ctx = CS.makeCtx(W); ctx.field = f; ctx.frame = fr; W.__ctx = ctx; }
 
 function startCampaign(i, resume) {
+  cutSounds();
   mode = 'campaign'; li = i; U = null; rescues = 0; resetCombo();
   W = clone(LEVELS[i]); ctx = null; rebuildCtx();
   const cur = resume && S.current && S.current.id === W.id ? S.current : null;
@@ -1622,7 +1640,7 @@ function checkEnd() {
   if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Welp! So close.');
 }
 function win() {
-  over = true; clearHint(); setTimeout(() => sfx('levelDone'), 250);
+  over = true; clearHint(); winTimers.push(setTimeout(() => sfx('levelDone'), 250));
   const id = W.id, first = !S.stars[id], extra = moves - W.opt;
   const s = extra <= 0 ? 3 : extra <= ({ easy: 3, medium: 2 }[W.tier] || 1) ? 2 : 1;
   const prev = S.stars[id] || 0;
@@ -1661,8 +1679,8 @@ function win() {
     ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
-  for (let k = 1; k <= s; k++) setTimeout(() => winSound('star', k), landAt(k));
-  setTimeout(() => winSound('chime', s), landAt(s) + 380);
+  for (let k = 1; k <= s; k++) winTimers.push(setTimeout(() => winSound('star', k), landAt(k)));
+  winTimers.push(setTimeout(() => winSound('chime', s), landAt(s) + 380));
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
@@ -1783,6 +1801,7 @@ function easyBoard() {
   return r.lvl ? { lvl: r.lvl, relocs: r.relocs } : null;
 }
 function startUnstoppable() {
+  cutSounds();
   mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true, hardAt: 20, good: 0, band: 'warm', boardStart: 90 };
   timeLeft = 90; over = false; busy = false; armed = null; hist = []; rescues = 0;
   show('play');
@@ -2000,6 +2019,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, transitions: () => transitions, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, soundState: () => ({ pending: winTimers.length, masterLive: !!master, masterGain: master ? master.gain.value : null }), transitions: () => transitions, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
