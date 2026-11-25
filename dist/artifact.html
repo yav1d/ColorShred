@@ -1025,6 +1025,43 @@ function sparkleTryAgain(ac, t) {
   }));
   note(ac, out, 'sine', nt(21), t + 0.6, 0.02, 0.5); // a faint glint of hope on the last note
 }
+// ---- Losing sound candidates (out of moves / time). The current arcade one stays until one is picked.
+const LOSE_STYLE = 'arcade';
+function brass(ac, out, f, t0, len, v, vib) { // muted brass: a saw whose filter opens and closes like a plunger mute
+  const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
+  lp.type = 'lowpass'; lp.Q.value = 6; lp.frequency.setValueAtTime(350, t0); lp.frequency.exponentialRampToValueAtTime(1500, t0 + 0.08); lp.frequency.exponentialRampToValueAtTime(500, t0 + len);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.04); g.gain.setValueAtTime(v, t0 + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.5; lg.gain.value = f * 0.025; l.connect(lg).connect(o.frequency); l.start(t0 + 0.25); l.stop(t0 + len); }
+  o.connect(lp).connect(g).connect(out); o.start(t0); o.stop(t0 + len + 0.05);
+}
+const LOSE_STYLES = {
+  // 1) Sad trombone: a playful "wah, wah, wah, waaah"
+  trombone(ac, t) {
+    const out = bus(ac, 2.4, 0.25, 1.2);
+    [[-14, 0, 0.32], [-15, 0.36, 0.32], [-16, 0.72, 0.32], [-17, 1.08, 1.1, true]].forEach(([st, dt, len, vib]) => brass(ac, out, nt(st), t + dt, len, 0.09, vib));
+  },
+  // 2) So close!: a rising run that stops one note short, then a bright "ding-ding" to cheer you on
+  nearmiss(ac, t) {
+    const out = echo(ac, bus(ac, 1.8, 0.3), 0.15, 0.2);
+    [0, 4, 7, 11].forEach((st, k) => pluck(ac, out, nt(st), t + k * 0.11, 0.12, 0.35));
+    note(ac, out, 'sine', nt(11), t + 0.44, 0.1, 0.25, nt(8));                  // ...slides down: not quite
+    [[24, 0.85], [28, 1.0]].forEach(([st, dt]) => bell(ac, out, nt(st), t + dt, 0.1, 1.0)); // ding-ding!
+  },
+  // 3) Rewind: a tape-rewind swoosh backwards, then a bouncy "ba-dum!" (ready? go again)
+  rewind(ac, t) {
+    const out = bus(ac, 2.0, 0.2);
+    const n = Math.floor(ac.sampleRate * 0.55), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (0.5 + 0.5 * Math.sin(i / ac.sampleRate * 2 * Math.PI * (30 + 60 * i / n)));
+    const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = b;
+    bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.setValueAtTime(3500, t); bp.frequency.exponentialRampToValueAtTime(400, t + 0.55);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    src.connect(bp).connect(g).connect(out); src.start(t);
+    note(ac, out, 'triangle', nt(12), t, 0.07, 0.5, nt(-12));                    // the pitch spinning backwards
+    note(ac, out, 'sine', nt(-5), t + 0.7, 0.3, 0.16, nt(2));                    // ba-
+    note(ac, out, 'sine', nt(2), t + 0.88, 0.3, 0.22, nt(9));                    // -dum!
+    note(ac, out, 'triangle', nt(21), t + 0.9, 0.06, 0.3);
+  },
+};
 function winSound(kind, arg, style) {
   if (!S.sound) return;
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
@@ -1076,6 +1113,7 @@ function sfx(kind) {
     if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;
     if (kind === 'shred') { shredSound(actx, t, comboStep()); return; }
+    if (kind === 'lose' && LOSE_STYLE !== 'arcade') { LOSE_STYLES[LOSE_STYLE](actx, t); return; }
     if (JINGLES[kind]) { JINGLES[kind](actx, t); return; }
     if (kind === 'blast') {
       const len = 0.5, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
@@ -1890,6 +1928,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
