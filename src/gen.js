@@ -18,6 +18,8 @@ const TIERS = {
   expert:    { w: [7, 7], h: [8, 9], colors: [5, 7], walls: [1, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.25, iceP: 0.1, fill: [0.84, 0.9], target: [5, 7], tries: 160 },
   master:    { w: [7, 7], h: [9, 10], colors: [6, 8], walls: [1, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.3, iceP: 0.1, fill: [0.86, 0.93], target: [6, 99], tries: 200 },
   legend:    { w: [7, 7], h: [9, 10], colors: [7, 8], walls: [2, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.35, iceP: 0.14, fill: [0.88, 0.94], target: [7, 99], tries: 240 },
+  maze:      { w: [7, 7], h: [8, 9], colors: [4, 6], walls: [4, 7], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.2, iceP: 0.05, fill: [0.78, 0.86], target: [4, 6], tries: 140 },
+  arrows:    { w: [6, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.6, iceP: 0.05, fill: [0.82, 0.9], target: [4, 6], tries: 140 },
   blitz:     { w: [6, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.25, iceP: 0.06, fill: [0.82, 0.9], target: [4, 6], tries: 140 },
   frozen:    { w: [7, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.2, iceP: 0.4, fill: [0.82, 0.9], target: [4, 7], tries: 160 },
   mythic:    { w: [7, 7], h: [8, 9], colors: [5, 7], walls: [1, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.6, iceP: 0.08, fill: [0.82, 0.9], target: [5, 9], tries: 180 },
