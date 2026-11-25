@@ -927,10 +927,17 @@ const JINGLES = {
     o.connect(g).connect(lp); o.start(t + 0.6); o.stop(t + 1.4); v.start(t + 0.6); v.stop(t + 1.4);
     note(ac, out, 'triangle', nt(-8), t + 0.6, 0.08, 0.7);
   },
-  // Unstoppable board cleared: a short three-note "bling"
+  // Unstoppable board cleared: a quick Sparkle pop shimmer (matches the star sounds, under a second)
   boardClear(ac, t) {
-    const { lp } = jingleOut(ac);
-    [7, 12, 16].forEach((st, k) => note(ac, lp, 'square', nt(st), t + 0.18 + k * 0.06, 0.045, 0.12));
+    const out = bus(ac, 1.9, 0.35, 1.2), t0 = t + 0.15;
+    whoosh(ac, out, t0, 0.22, 0.08);
+    [[12, 0.12], [16, 0.19], [19, 0.26]].forEach(([st, dt]) => [-6, 6].forEach(c => {
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = nt(st); o.detune.value = c;
+      g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.04, t0 + dt + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.5);
+      o.connect(g).connect(out); o.start(t0 + dt); o.stop(t0 + dt + 0.55);
+    }));
+    note(ac, out, 'sine', nt(12), t0 + 0.3, 0.2, 0.12, nt(24));   // pop
+    note(ac, out, 'sine', nt(31), t0 + 0.36, 0.05, 0.3);           // sparkle
   },
 };
 function starBlip(ac, t, st) {
