@@ -245,6 +245,9 @@ button:disabled { cursor: default; }
 .rules b { color: var(--accent); font-family: var(--display); font-weight: 400; font-size: 18px; min-width: 18px; }
 textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius: 12px; border: 0; padding: 10px; background: #0005; color: var(--text);
   font: 600 12px/1.4 ui-monospace, Menlo, monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
+.sndpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sndpick .btn { font-size: 14px; padding: 11px 4px; margin-top: 6px; }
+.sndpick .btn.on { background: var(--accent); color: #241a00; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .row2 .btn { margin-top: 10px; }
 .toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: #000d; padding: 10px 16px; border-radius: 12px;
@@ -763,7 +766,7 @@ function prize(li) {
 const KEY = 'colorshred:save2';
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, seenRules: false, best: 0, bestCleared: 0, current: null }; }
+function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, shredStyle: 'paper', seenRules: false, best: 0, bestCleared: 0, current: null }; }
 let S = freshSave();
 (function loadSave() {
   try {
@@ -810,8 +813,50 @@ function comboStep() {
   comboN = now - comboT < 2500 ? Math.min(comboN + 1, SCALE.length - 1) : 0;
   comboT = now; return comboN;
 }
-function shredSound(ac, t, step) {
+// Three shred sounds to choose from in Settings. All of them climb the scale on a streak.
+const SHRED_SOUNDS = { paper: 'Paper rip', bubble: 'Bubble pop', arcade: 'Arcade bling' };
+function shredSound(ac, t, step, style) {
   const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+  style = style || S.shredStyle || 'paper';
+  if (style === 'bubble') return bubbleShred(ac, t, step, out);
+  if (style === 'arcade') return arcadeShred(ac, t, step, out);
+  paperShred(ac, t, step, out);
+}
+const note = (ac, out, type, f, t0, peak, dur, f1) => { // one shaped tone, optionally gliding to f1
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur * 0.6);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(out); o.start(t0); o.stop(t0 + dur + 0.02);
+};
+// Bubble pop: a round "bloop", a tiny pop, and a soft marimba note with a water-drop chirp.
+function bubbleShred(ac, t, step, out) {
+  const f0 = 523.25 * Math.pow(2, SCALE[step] / 12);
+  note(ac, out, 'sine', 820, t, 0.42, 0.13, 190);                    // bloop (falling)
+  const n = Math.floor(ac.sampleRate * 0.025), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const src = ac.createBufferSource(), hp = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = b; hp.type = 'highpass'; hp.frequency.value = 2500; g.gain.value = 0.35;
+  src.connect(hp).connect(g).connect(out); src.start(t + 0.07);       // pop
+  const tc = t + 0.1;
+  note(ac, out, 'sine', f0, tc, 0.26, 0.38);                          // marimba body
+  note(ac, out, 'sine', f0 * 4, tc, 0.05, 0.09);                      // marimba knock
+  note(ac, out, 'sine', f0 * 1.5, tc + 0.04, 0.07, 0.12, f0 * 3);     // water-drop chirp (rising)
+  if (step >= 4) note(ac, out, 'sine', f0 * 2, tc + 0.12, 0.08, 0.25);
+}
+// Arcade bling: a quick retro zap and a three-note sparkle arpeggio, like collecting a prize.
+function arcadeShred(ac, t, step, out) {
+  out.gain.value = 2.2; // square waves are quiet at these levels: match the loudness of the other two
+  const f0 = 523.25 * Math.pow(2, SCALE[step] / 12);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; lp.connect(out);
+  note(ac, lp, 'square', 1300, t, 0.07, 0.09, 180);                   // zap (falling)
+  const tc = t + 0.08;
+  [[1, 0], [1.26, 0.05], [1.5, 0.1]].forEach(([m, dt]) => note(ac, lp, 'square', f0 * m, tc + dt, 0.06, 0.09));
+  note(ac, lp, 'square', f0 * 2, tc + 0.15, 0.06, 0.26);              // final ring
+  note(ac, out, 'triangle', f0 * 2, tc + 0.15, 0.1, 0.3);             // soften the square with a triangle twin
+  if (step >= 4) note(ac, out, 'triangle', f0 * 3, tc + 0.22, 0.06, 0.2);
+}
+// Paper rip: a chunky paper "brrrt" through the teeth, a soft thunk, and a bright chime.
+function paperShred(ac, t, step, out) {
   // 1) the rip: noise chopped by the cutter teeth (~70 per second), swept from bright to dull
   const len = 0.2, sr = ac.sampleRate, buf = ac.createBuffer(1, Math.floor(sr * len), sr), d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) {
@@ -1553,6 +1598,8 @@ function showSettings() {
   const code = btoa(unescape(encodeURIComponent(JSON.stringify({ ...S, current: S.current }))));
   showCard(`<h3>Settings</h3>
     <button class="btn alt" id="sndBtn">Sound: ${S.sound ? 'on' : 'off'}</button>
+    <p style="margin:14px 0 0">Shred sound (tap to hear it)</p>
+    <div class="sndpick">${Object.entries(SHRED_SOUNDS).map(([k, name]) => `<button class="btn alt${(S.shredStyle || 'paper') === k ? ' on' : ''}" data-snd="${k}">${name}</button>`).join('')}</div>
     <button class="btn alt" id="rulesBtn">How to play</button>
     <p style="margin:16px 0 6px">Your progress saves on this phone automatically. Copy this backup code somewhere safe to restore it later.</p>
     <textarea id="saveCode" readonly>${code}</textarea>
@@ -1560,6 +1607,14 @@ function showSettings() {
     <button class="btn danger" id="resetBtn">Reset all progress</button>
     <button class="btn" id="closeBtn">Done</button>`);
   $('sndBtn').onclick = () => { S.sound = !S.sound; save(); $('sndBtn').textContent = 'Sound: ' + (S.sound ? 'on' : 'off'); };
+  $('card').querySelectorAll('[data-snd]').forEach(b => b.onclick = () => {
+    S.shredStyle = b.dataset.snd; save();
+    $('card').querySelectorAll('[data-snd]').forEach(x => x.classList.toggle('on', x === b));
+    try { // play a short streak of three so the climbing chime is heard too
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+      const t = actx.currentTime + 0.05; [0, 1, 2].forEach(k => shredSound(actx, t + k * 0.32, k));
+    } catch (e) {}
+  });
   $('rulesBtn').onclick = showRules;
   $('closeBtn').onclick = () => { hideOverlay(); renderWelcome(); };
   $('copyBtn').onclick = () => {
@@ -1627,6 +1682,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step) => shredSound(ac, t, step) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style) };
 })();
 </script>
