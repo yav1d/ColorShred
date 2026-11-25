@@ -721,9 +721,9 @@ const TRANSITIONS = {
     if (d > 0.4) note(ac, out, 'sine', nt(st + 12), t + 0.05, 0.04 + d * 0.04, 0.6);
     if (d > 0.75) note(ac, out, 'sine', nt(st + 19), t + 0.1, 0.04, 0.5);
   },
-  // B) Level-up run: quick rising Sparkle notes, more of them for harder boards (2 to 5)
+  // B) Level-up run: the same three quick rising Sparkle notes every time; only the pitch rises with difficulty
   run(ac, t, d) {
-    const out = bus(ac, 3.4, 0.35, 1.2), steps = [0, 4, 7, 12, 16].slice(0, 2 + Math.round(d * 3)), base = Math.round(d * 5);
+    const out = bus(ac, 3.4, 0.35, 1.2), steps = [0, 4, 7], base = Math.round(d * 7);
     steps.forEach((st, k) => [-6, 6].forEach(c => {
       const o = ac.createOscillator(), g = ac.createGain(), t0 = t + k * 0.075; o.type = 'sine'; o.frequency.value = nt(st + base); o.detune.value = c;
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
@@ -742,7 +742,7 @@ const TRANSITIONS = {
 let transitions = [];
 function transitionSound(d, style) {
   style = style || TRANSITION_STYLE; if (!style || !S.sound) return;
-  transitions.push({ style, d: +d.toFixed(2), notes: 2 + Math.round(d * 3) });
+  transitions.push({ style, d: +d.toFixed(2), notes: 3, pitchUp: Math.round(d * 7) });
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); TRANSITIONS[style](actx, actx.currentTime + 0.02, d); } catch (e) {}
 }
 function winSound(kind, arg, style) {
