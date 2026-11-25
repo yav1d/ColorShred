@@ -413,16 +413,67 @@ function applyTheme() {
 
 // ---------- sound ----------
 let actx = null;
+// Shredding: a chunky paper "brrrt" through the teeth, a soft thunk for weight, and a bright chime on top.
+// The chime climbs a happy (pentatonic) scale while you keep shredding in quick succession: a little
+// streak that makes you want the next one. A short pause starts the scale over.
+const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
+let comboN = 0, comboT = 0;
+function comboStep() {
+  const now = performance.now();
+  comboN = now - comboT < 2500 ? Math.min(comboN + 1, SCALE.length - 1) : 0;
+  comboT = now; return comboN;
+}
+function shredSound(ac, t, step) {
+  const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+  // 1) the rip: noise chopped by the cutter teeth (~70 per second), swept from bright to dull
+  const len = 0.2, sr = ac.sampleRate, buf = ac.createBuffer(1, Math.floor(sr * len), sr), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const x = i / d.length, teeth = Math.sin(2 * Math.PI * 70 * i / sr) > -0.2 ? 1 : 0.25;
+    d[i] = (Math.random() * 2 - 1) * teeth * Math.min(1, x * 25) * Math.pow(1 - x, 1.6);
+  }
+  const rip = ac.createBufferSource(); rip.buffer = buf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(3800, t); bp.frequency.exponentialRampToValueAtTime(900, t + len);
+  const rg = ac.createGain(); rg.gain.value = 0.55;
+  rip.connect(bp).connect(rg).connect(out); rip.start(t);
+  // 2) the thunk
+  const th = ac.createOscillator(), tg = ac.createGain(); th.type = 'sine';
+  th.frequency.setValueAtTime(150, t); th.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+  tg.gain.setValueAtTime(0.0001, t); tg.gain.exponentialRampToValueAtTime(0.5, t + 0.008); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  th.connect(tg).connect(out); th.start(t); th.stop(t + 0.18);
+  // 3) the chime, one note higher for each shred in a streak
+  const f0 = 523.25 * Math.pow(2, SCALE[step] / 12), tc = t + 0.11;
+  [[1, 0.22, 'sine'], [2, 0.07, 'sine'], [3.01, 0.03, 'triangle']].forEach(([m, v, type]) => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0 * m, tc);
+    g.gain.setValueAtTime(0.0001, tc); g.gain.exponentialRampToValueAtTime(v, tc + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, tc + 0.42);
+    o.connect(g).connect(out); o.start(tc); o.stop(tc + 0.45);
+  });
+  // a tiny sparkle on long streaks
+  if (step >= 4) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f0 * 2, tc + 0.07);
+    g.gain.setValueAtTime(0.0001, tc + 0.07); g.gain.exponentialRampToValueAtTime(0.06, tc + 0.075); g.gain.exponentialRampToValueAtTime(0.0001, tc + 0.3);
+    o.connect(g).connect(out); o.start(tc + 0.07); o.stop(tc + 0.32);
+  }
+}
+// iPhones only allow sound after a tap; wake the audio on the first touch so the first shred is heard
+function unlockAudio() {
+  if (!S.sound) return;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {}
+}
+document.addEventListener('pointerdown', unlockAudio, { passive: true });
+document.addEventListener('touchend', unlockAudio, { passive: true });
 function sfx(kind) {
   if (!S.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;
-    if (kind === 'shred' || kind === 'blast') {
-      const len = kind === 'blast' ? 0.5 : 0.35, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
+    if (kind === 'shred') { shredSound(actx, t, comboStep()); return; }
+    if (kind === 'blast') {
+      const len = 0.5, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (0.6 + 0.4 * Math.sin(i / 40));
       const src = actx.createBufferSource(); src.buffer = buf;
-      const f = actx.createBiquadFilter(); f.type = kind === 'blast' ? 'lowpass' : 'bandpass'; f.frequency.value = kind === 'blast' ? 600 : 1400; f.Q.value = 0.8;
+      const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; f.Q.value = 0.8;
       const g = actx.createGain(); g.gain.value = 0.35;
       src.connect(f).connect(g).connect(actx.destination); src.start(t);
     } else {
@@ -1189,6 +1240,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step) => shredSound(ac, t, step) };
 })();
 </script>
