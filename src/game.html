@@ -837,6 +837,9 @@ function win() {
     ${!finished && next >= 0 ? `<button class="btn${retry ? ' alt' : ''}" id="nextBtn">Next level</button>` : ''}
     ${retry ? '' : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), (0.25 + (k - 1) * 0.38 + 0.42) * 1000);
+  if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
+  if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
+  if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
   $('replayBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
 }
 function lose(title, msg) {
