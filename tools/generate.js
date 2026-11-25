@@ -15,9 +15,9 @@ while (made < T.count) {
   const full = CS.solve(lvl, null, 400000);
   if (!full || full.unsolvable) continue;
   const opt = lvl.blocks.length + full.relocs;
-  const slack = { easy: 8, medium: 5, hard: 3, superhard: 1 }[name];
+  const slack = { easy: 8, medium: 5, hard: 3, superhard: 1, expert: 3, master: 2, legend: 1 }[name];
   const level = { tier: name, ...lvl, opt, moves: opt + slack, relocs: full.relocs };
-  if (name === 'superhard') level.time = 60 + lvl.blocks.length * 7;
+  if (['superhard', 'master', 'legend'].includes(name)) level.time = 60 + lvl.blocks.length * 7;
   out.push(level); made++;
   process.stderr.write(`\n${name} #${made}: ${lvl.w}x${lvl.h} blocks=${lvl.blocks.length} relocs=${full.relocs} states=${full.states}`);
   fs.writeFileSync(OUT, JSON.stringify(out));

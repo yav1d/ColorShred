@@ -85,6 +85,9 @@ button:disabled { cursor: default; }
 .banner { margin: 10px 0 4px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(120deg, #ffc93c33, #e9509f33); text-align: center; }
 .banner b { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--accent); }
 .tier { margin: 18px 0 0; }
+.season { margin: 30px 0 0; padding: 14px 16px; border-radius: 18px; text-align: center; background: linear-gradient(120deg, #1fb5b033, #9a5be833, #ffc93c33); }
+.season b { display: block; font-family: var(--display); font-weight: 400; font-size: 28px; color: var(--text); }
+.season span { color: var(--muted); font-size: 14px; }
 .tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .tier-head h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
 .tier-head small { color: var(--muted); font-size: 13px; text-align: right; }
@@ -378,12 +381,15 @@ const SYMBOLS = [
   '<path d="M12 21.5S2.5 15.6 2.5 9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.5 3c0 6.6-9.5 12.5-9.5 12.5z"/>', // pink: heart
 ];
 const symSvg = (c, cls, style) => `<svg class="${cls || 'sym'}" viewBox="0 0 24 24"${style ? ` style="${style}"` : ''}>${SYMBOLS[c]}</svg>`;
-const TIERS = ['easy', 'medium', 'hard', 'superhard'];
+const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'master', 'legend'];
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
   hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
   superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
+  expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
+  master: { name: 'Master', color: '#9A5BE8', blurb: 'Two spare moves and a clock', reward: 60 },
+  legend: { name: 'Legend', color: '#FFC93C', blurb: 'The toughest boards in the game', reward: 80 },
   unstoppable: { name: 'Unstoppable', color: '#E9509F' },
 };
 const $ = id => document.getElementById(id);
@@ -392,10 +398,10 @@ const fmtTime = t => Math.floor(Math.max(0, t) / 60) + ':' + String(Math.max(0, 
 
 // ---------- unlockable board colors: one per campaign level ----------
 const ADJ = ['Neon','Velvet','Electric','Frosted','Molten','Midnight','Solar','Lunar','Wild','Royal','Cosmic','Candy','Dusty','Glacier','Ember','Jungle','Pixel','Retro','Silky','Thunder'];
-const NOUN = ['Lagoon','Mango','Orchid','Comet','Coral','Mint','Plum','Saffron','Cobalt','Rose'];
+const NOUN = ['Lagoon','Mango','Orchid','Comet','Coral','Mint','Plum','Saffron','Cobalt','Rose','Aurora','Berry','Canyon','Dune','Ember','Fern','Galaxy','Honey','Iris','Jade','Kiwi','Lilac','Meadow','Nectar','Ocean','Peach','Quartz','Ruby','Sunset','Tulip','Velvet','Willow','Breeze','Cocoa','Frost','Glow','Lotus','Pebble','Sorbet','Topaz'];
 function prize(li) {
   const h = Math.round((li * 137.508 + 200) % 360), s = 55 + (li * 29) % 30, l = 48 + (li * 13) % 14;
-  return { id: li, name: ADJ[li % 20] + ' ' + NOUN[Math.floor(li / 20) % 10], h, s, l, css: `hsl(${h} ${s}% ${l}%)` };
+  return { id: li, name: ADJ[li % 20] + ' ' + NOUN[Math.floor(li / 20) % NOUN.length], h, s, l, css: `hsl(${h} ${s}% ${l}%)` };
 }
 
 // ---------- save data ----------
@@ -849,7 +855,8 @@ function renderWelcome() {
     fl.appendChild(d);
   }
   const n = nextLevel(), cur = S.current && idx[S.current.id];
-  $('playSub').textContent = cur != null ? `Continue level ${cur + 1}` : n < 0 ? 'All levels complete' : `Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
+  const isNew = n >= 0 && TIERS.indexOf(LEVELS[n].tier) > TIERS.indexOf('superhard') && !LEVELS.some((l, k) => cleared(k) && TIERS.indexOf(l.tier) > TIERS.indexOf('superhard'));
+  $('playSub').textContent = cur != null ? `Continue level ${cur + 1}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
   $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
   setCoins(S.coins);
   show('welcome');
@@ -864,6 +871,7 @@ function renderLevels() {
     const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
     if (!r.length) continue;
     const done = r.filter(cleared).length;
+    if (TIER[t].season === 2) wrap.insertAdjacentHTML('beforeend', `<div class="season"><b>Season 2</b><span>${LEVELS.filter(l => TIER[l.tier].season || TIERS.indexOf(l.tier) > TIERS.indexOf('superhard')).length} new levels</span></div>`);
     const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
     sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
     const g = sec.querySelector('.grid');
