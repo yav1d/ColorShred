@@ -1081,6 +1081,7 @@ function blockAt(ev) {
   return CS.occupancy(ctx, pos)[cy * W.w + cx];
 }
 function onDown(ev) {
+  if (drag && (drag.field !== ctx.field || ev.pointerId !== drag.id)) abandonDrag(); // a lost finger-up must never freeze the board
   if (over || busy || drag) return;
   const i = blockAt(ev);
   if (armed) { if (i >= 0) usePower(armed, i); return; }
@@ -1089,7 +1090,7 @@ function onDown(ev) {
   if (CS.frozen(ctx, pos, i)) { shake(i); sfx('bump'); toast(`Frozen. Shred ${ctx.blocks[i].ice - CS.removedCount(pos)} more block(s) to thaw it, or use Thaw.`); return; }
   ev.preventDefault();
   ctx.field.setPointerCapture(ev.pointerId);
-  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i] };
+  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i], field: ctx.field };
   els[i].classList.add('grab');
   ctx.field.addEventListener('pointermove', onMove);
   ctx.field.addEventListener('pointerup', onUp);
@@ -1124,6 +1125,14 @@ function onMove(ev) {
     if (!ok) break;
   }
   if (moved) { place(i); sfx('tick'); }
+}
+// End a drag without a finger-up: keep the block where it is (counted as a move if it moved).
+function abandonDrag() {
+  if (!drag) return;
+  const f = drag.field;
+  if (f === ctx.field) { try { finishDrag(null); return; } catch (e) {} }
+  f.removeEventListener('pointermove', onMove); f.removeEventListener('pointerup', onUp); f.removeEventListener('pointercancel', onUp);
+  drag = null;
 }
 function onUp(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
@@ -1298,6 +1307,9 @@ function lose(title, msg) {
 }
 
 // ---------- Unstoppable ----------
+// Unstoppable boards are built in a background worker so play never stutters. iPhones can stop that worker
+// (screen locked, app switched, low memory), so every request has a deadline: if the worker goes quiet or
+// crashes, it is restarted once, and after that the board is built right here instead. A board always arrives.
 let worker = null, pending = {};
 function getWorker() {
   if (worker !== null) return worker;
@@ -1309,19 +1321,41 @@ self.onmessage = e => { const { stage, seed } = e.data;
   postMessage({ stage, error: true }); };`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     worker.onmessage = e => { const cb = pending[e.data.stage]; delete pending[e.data.stage]; if (cb) cb(e.data); };
-    worker.onerror = () => { worker = false; };
+    worker.onerror = () => { killWorker(); };
   } catch (e) { worker = false; }
   return worker;
 }
+function killWorker() {
+  try { worker && worker.terminate(); } catch (e) {}
+  worker = false;
+  const ps = pending; pending = {};
+  Object.values(ps).forEach(cb => cb(null)); // null = "build it on this thread instead"
+}
+function buildHere(stage, seed) {
+  let r = { lvl: null };
+  for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(stage), { cap: 4000 }); }
+  return r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true };
+}
 function requestBoard(stage, cb) {
   const seed = (Date.now() ^ (stage * 2654435761)) | 0;
-  const w = getWorker();
-  if (w) { pending[stage] = cb; w.postMessage({ stage, seed }); return; }
-  setTimeout(() => { // fallback: generate on the main thread
-    let r = { lvl: null };
-    for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(stage), { cap: 4000 }); }
-    cb(r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true });
-  }, 30);
+  let done = false, retried = false, timer = null;
+  const here = () => setTimeout(() => finish(buildHere(stage, seed)), 30);
+  function finish(res) {
+    if (done) return;
+    if (res === null) return here();
+    done = true; clearTimeout(timer); cb(res);
+  }
+  function ask() {
+    const w = getWorker();
+    if (!w) return here();
+    pending[stage] = finish; w.postMessage({ stage, seed: seed + (retried ? 1 : 0) });
+    timer = setTimeout(() => {
+      if (done) return;
+      if (!retried) { retried = true; try { worker.terminate(); } catch (e) {} worker = null; pending = {}; ask(); }
+      else { delete pending[stage]; here(); }
+    }, 8000);
+  }
+  ask();
 }
 function prefetch(stage) {
   U.next = null; U.fetching = true; const run = U;
@@ -1378,7 +1412,8 @@ function unstoppableClear() {
     busy = false;
     const easy = rescue && easyBoard();
     if (easy) loadUnstoppableBoard(easy);
-    else if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
+    else if (U.next) loadUnstoppableBoard();
+    else { U.waiting = true; showGenerating(); if (!U.fetching) prefetch(U.stage); } // nothing on the way: ask now
   }, 650);
 }
 function endRun(quit) {
@@ -1519,9 +1554,13 @@ $('undoBtn').onclick = undo;
 $('restartBtn').onclick = restart;
 $('hintBtn').onclick = hint;
 let rT = null;
-window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('play').hidden && W && ctx && ctx.field) { clearHint(); buildBoard(); updateHud(); } }, 120); });
+window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(function redo() {
+  if ($('play').hidden || !W || !ctx || !ctx.field) return;
+  if (drag || busy) { rT = setTimeout(redo, 200); return; } // never rebuild the board under a finger or mid-animation
+  clearHint(); buildBoard(); updateHud(); }, 120); });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrent(); });
+window.addEventListener('error', () => { try { drag = null; busy = false; if (U && U.waiting && !U.fetching) prefetch(U.stage); } catch (e) {} });
 applyTheme();
 renderWelcome();
 // Ask the phone to keep this game's saved data instead of clearing it when storage runs low
@@ -1532,7 +1571,7 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); } };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)) };
 })();
 </script>
 
