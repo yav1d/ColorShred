@@ -712,7 +712,7 @@ const LOSE_STYLES = {
 };
 // ---- New-board transition chime in Unstoppable, shaped by how hard the board is (d: 0 easy .. 1 superhard).
 // Candidates to compare; none plays until one is picked.
-const TRANSITION_STYLE = null;
+const TRANSITION_STYLE = 'run'; // chosen: Level-up run
 const TRANSITIONS = {
   // A) Rising bell: one sparkly bell, higher and brighter (more shimmer) for harder boards
   bell(ac, t, d) {
@@ -739,8 +739,10 @@ const TRANSITIONS = {
     chord.forEach(st => note(ac, out, 'triangle', nt(st), hit, 0.035, 0.5 + d * 0.3));
   },
 };
+let transitions = [];
 function transitionSound(d, style) {
   style = style || TRANSITION_STYLE; if (!style || !S.sound) return;
+  transitions.push({ style, d: +d.toFixed(2), notes: 2 + Math.round(d * 3) });
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); TRANSITIONS[style](actx, actx.currentTime + 0.02, d); } catch (e) {}
 }
 function winSound(kind, arg, style) {
@@ -1611,6 +1613,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, transitions: () => transitions, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
