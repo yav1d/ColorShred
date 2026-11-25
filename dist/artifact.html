@@ -1035,6 +1035,33 @@ function brass(ac, out, f, t0, len, v, vib) { // muted brass: a saw whose filter
   o.connect(lp).connect(g).connect(out); o.start(t0); o.stop(t0 + len + 0.05);
 }
 const LOSE_STYLES = {
+  // D) Sparkle fizzle: the Sparkle pop shimmer bends softly down, then one bright hopeful pop
+  fizzle(ac, t) {
+    const out = bus(ac, 2.2, 0.4, 1.6);
+    [12, 16, 19].forEach(st => [-6, 6].forEach(c => {
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(nt(st), t); o.detune.value = c;
+      o.frequency.exponentialRampToValueAtTime(nt(st - 7), t + 0.7);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
+      o.connect(g).connect(out); o.start(t); o.stop(t + 0.8);
+    }));
+    whoosh(ac, out, t + 0.05, 0.6, 0.05);
+    note(ac, out, 'sine', nt(0), t + 0.95, 0.22, 0.14, nt(12));          // pop!
+    note(ac, out, 'sine', nt(24), t + 1.0, 0.06, 0.35);                   // sparkle on top
+  },
+  // E) Arcade "Continue?": a quick power-down, then two blinking beeps like an arcade machine waiting
+  continue(ac, t) {
+    const { out, lp } = jingleOut(ac);
+    [12, 7, 3, 0, -5].forEach((st, k) => note(ac, lp, 'square', nt(st), t + k * 0.055, 0.045, 0.07));   // power-down
+    note(ac, lp, 'square', nt(-5), t + 0.28, 0.04, 0.2, nt(-17));
+    [[19, 0.75], [19, 1.05]].forEach(([st, dt]) => { note(ac, lp, 'square', nt(st), t + dt, 0.045, 0.12); note(ac, out, 'triangle', nt(st), t + dt, 0.07, 0.14); });
+  },
+  // F) Uh-oh, let's go: a soft wooden "uh-oh", then a light rising "let's go!"
+  uhoh(ac, t) {
+    const out = bus(ac, 2.4, 0.3);
+    const wood = (st, dt, v) => { note(ac, out, 'sine', nt(st), t + dt, v, 0.35); note(ac, out, 'sine', nt(st) * 4, t + dt, v * 0.2, 0.06); };
+    wood(7, 0, 0.16); wood(4, 0.22, 0.16);                                // uh-oh
+    [[7, 0.7], [11, 0.8], [14, 0.9]].forEach(([st, dt]) => wood(st, dt, 0.12)); // let's go!
+  },
   // 1) Sad trombone: a playful "wah, wah, wah, waaah"
   trombone(ac, t) {
     const out = bus(ac, 2.4, 0.25, 1.2);
