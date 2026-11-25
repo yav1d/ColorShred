@@ -126,10 +126,11 @@ function makeLevel(T) {
 }
 
 
-// Unstoppable: difficulty ramps with the stage, with some randomness so runs feel different.
-function unstoppableTier(stage) {
-  let d = Math.min(1, (stage - 1) / 25) + (rnd() - 0.5) * 0.2;
-  d = Math.max(0, Math.min(1, d));
+// Unstoppable: a board recipe for difficulty d (0 = easiest, 1 = superhard). The game decides d from the stage;
+// a little randomness keeps runs different, kept inside [lo, hi] so a warm-up board never turns hard by chance.
+function unstoppableTier(d0, lo, hi) {
+  lo = lo == null ? 0 : lo; hi = hi == null ? 1 : hi;
+  let d = Math.max(lo, Math.min(hi, d0 + (rnd() - 0.5) * 0.2));
   const r = x => Math.round(x);
   return { w: [5 + r(d * 2), 5 + r(d * 2)], h: [6 + r(d * 3), 6 + r(d * 3)], colors: [3 + r(d * 3), 3 + r(d * 4)],
     walls: [0, r(d * 3)], shapes: Array.from({ length: 6 + r(d * 11) }, (_, i) => i), axisP: 0.3 * d, iceP: 0.1 * d,

@@ -6,7 +6,10 @@ A sliding-block color puzzle for phones. Drag each block into the shredder gate 
 - **Levels**: 200 levels, with 50 each in **Easy**, **Medium**, **Hard** and **Superhard**. Each level unlocks when you beat the one before it.
   A solver checks every level, so each one can be solved and has a known minimum move count.
 - **Unstoppable**: endless boards generated on the phone. Moves are unlimited and the clock is what you fight. You start with 1:30.
-  Each cleared board adds 10 seconds, plus more for harder boards (up to 30), and the next board gets harder, with some randomness.
+  Each cleared board adds 10 seconds, plus more for harder boards (up to 30).
+  Boards warm up from easy to medium until stage 15–20, then turn hard and climb to superhard over about ten stages.
+  The switch comes sooner the better you play: every two boards solved faster than their time bonus bring it one stage closer
+  (stage 20 at the latest, stage 15 at the earliest).
   If you solve a board with less than 12 seconds left, the next one is an easy board to help you recover.
 
 ## Rules
