@@ -549,7 +549,7 @@ function winRoll(ac, t, steps, ring) {
   });
 }
 // ---- Star and win-chime sound styles (the result screen). One is used for everyone; candidates kept for comparing.
-const WIN_STYLE = 'arcade';
+const WIN_STYLE = 'sparkle'; // chosen by the family: Sparkle pop for 2 and 3 stars
 function verb(ac, secs, wet) { // small generated room echo
   const len = Math.floor(ac.sampleRate * secs), ir = ac.createBuffer(2, len, ac.sampleRate);
   for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
@@ -611,9 +611,9 @@ const WIN_STYLES = {
     } },
   // 3) Sparkle pop: bubbly pops, an airy whoosh and a shimmering chord
   sparkle: {
-    star: (ac, t, k) => { const out = bus(ac, 1, 0.3); const f = nt([7, 12, 16][k - 1]); note(ac, out, 'sine', f * 0.5, t, 0.3, 0.14, f * 1.5); note(ac, out, 'sine', f * 2, t + 0.05, 0.08, 0.25); },
+    star: (ac, t, k) => { const out = bus(ac, 1.9, 0.3); const f = nt([7, 12, 16][k - 1]); note(ac, out, 'sine', f * 0.5, t, 0.3, 0.14, f * 1.5); note(ac, out, 'sine', f * 2, t + 0.05, 0.08, 0.25); },
     chime: (ac, t, perfect) => {
-      const out = bus(ac, 1, 0.45, 2.0);
+      const out = bus(ac, 1.9, 0.45, 2.0);
       whoosh(ac, out, t, perfect ? 0.6 : 0.4, 0.18);
       const tc = t + (perfect ? 0.5 : 0.32);
       (perfect ? [12, 16, 19, 24, 28] : [12, 16, 19, 24]).forEach(st => [-6, 6].forEach(c => {
