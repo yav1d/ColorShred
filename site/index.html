@@ -76,6 +76,11 @@ button:disabled { cursor: default; }
 .mbtn.play small { color: #5c4300; }
 .mbtn.unst { background: linear-gradient(120deg, #e9509f, #9a5be8 55%, #4f63e8); }
 .mbtn.unst small { color: #ffffffcc; }
+.mbtn.daily { background: linear-gradient(120deg, #ff8a3d, #ffc93c); color: #2a1600; }
+.mbtn.daily small { color: #5c3300; }
+.streak { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; background: #ff8a3d22; color: #ff8a3d; margin: 0 0 10px; }
+.streak b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1; }
+.streak span { color: var(--text); font-size: 14px; }
 .mbtn svg { width: 30px; height: 30px; flex: none; }
 .install { position: relative; width: min(340px, 100%); margin-top: 6px; padding: 12px 14px; border-radius: 16px; background: #ffffff12;
   font-size: 14px; line-height: 1.4; font-weight: 700; color: var(--muted); display: flex; gap: 10px; align-items: flex-start; }
@@ -311,6 +316,8 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
     <button class="mbtn unst" id="unstBtn"><span><b>Unstoppable</b><small id="unstSub">Endless boards against the clock</small></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.7-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z"/></svg></button>
+    <button class="mbtn daily" id="dailyBtn"><span><b>Daily Challenge</b><small id="dailySub">A new puzzle every day</small></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/></svg></button>
     <div class="mrow">
       <button class="sbtn" id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Levels</button>
       <button class="sbtn" id="colorsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.8-.4-1.2.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15" cy="7.5" r="1.3" fill="currentColor"/></svg>Colors</button>
@@ -798,6 +805,7 @@ const TIER = {
   frozen: { name: 'Frozen', color: '#39A0F0', blurb: 'Ice everywhere. Plan the thaw.', reward: 70 },
   mythic: { name: 'Mythic', color: '#E9509F', blurb: 'Arrow blocks, and only a perfect solve counts', reward: 100 },
   unstoppable: { name: 'Unstoppable', color: '#E9509F' },
+  daily: { name: 'Daily', color: '#FF8A3D', reward: 0 },
 };
 const $ = id => document.getElementById(id);
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f)); return `rgb(${c})`; };
@@ -1264,6 +1272,8 @@ function renderWelcome() {
   const n = nextLevel(), cur = S.current && idx[S.current.id];
   const isNew = n >= 0 && TIERS.indexOf(LEVELS[n].tier) > TIERS.indexOf('superhard') && !LEVELS.some((l, k) => cleared(k) && TIERS.indexOf(l.tier) > TIERS.indexOf('superhard'));
   $('playSub').textContent = cur != null ? `Continue level ${cur + 1}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
+  { const D = dailyState(), th = THEMES[new Date().getDay()], st = liveStreak();
+    $('dailySub').innerHTML = (D.done[dayKey()] ? `Done today ✓ · next in ${untilMidnight()}` : th.name) + (st ? ` · ${FLAME} ${st}` : ''); }
   $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
   setCoins(S.coins);
   show('welcome');
@@ -1669,18 +1679,9 @@ function usePower(k, i) {
 function checkEnd() {
   if (over) return;
   if (!pos.some(p => p >= 0)) return mode === 'unstoppable' ? unstoppableClear() : win();
-  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Welp! So close.');
+  if ((mode === 'campaign' || mode === 'daily') && moves >= W.moves + extraMoves) lose('Out of moves', 'Welp! So close.');
 }
-function win() {
-  over = true; clearHint(); winTimers.push(setTimeout(() => sfx('levelDone'), 250));
-  const id = W.id, first = !S.stars[id], extra = moves - W.opt;
-  const s = extra <= 0 ? 3 : extra <= ({ easy: 3, medium: 2 }[W.tier] || 1) ? 2 : 1;
-  const prev = S.stars[id] || 0;
-  const coins = first ? TIER[W.tier].reward + s * 5 : Math.max(0, s - prev) * 5;
-  S.stars[id] = Math.max(prev, s); S.current = null;
-  setCoins(S.coins + coins, coins > 0); save();
-  const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
-  const finished = first && allDone();
+function starBlock(s) {
   const STAR = '<path d="M50 4l13.5 28.6 31.3 3.9-23 21.6 6 31L50 74 22.2 89.1l6-31-23-21.6 31.3-3.9z"/>';
   const perfect = s === 3, shineAt = 0.25 + 2 * 0.38 + 0.6; // the shine starts once the third star has landed
   const sweep = k => perfect ? `<defs><clipPath id="sclip${k}">${STAR}</clipPath><linearGradient id="sgrad${k}" x1="0" x2="1">
@@ -1690,6 +1691,29 @@ function win() {
     <svg viewBox="0 0 100 100"><g class="empty">${STAR}</g><g class="full">${STAR}</g>${sweep(k)}</svg></div>`).join('')
     + (perfect ? [[4, 10], [30, -8], [62, 4], [92, 14], [14, 78], [80, 80]].map(([x, y], n) =>
       `<svg class="sparkle" viewBox="0 0 20 20" style="left:${x}%;top:${y}%;--tw:${(shineAt + n * 0.27).toFixed(2)}s"><path d="M10 0c.8 5.6 4.4 9.2 10 10-5.6.8-9.2 4.4-10 10-.8-5.6-4.4-9.2-10-10 5.6-.8 9.2-4.4 10-10z"/></svg>`).join('') : '');
+  return { starsHtml, perfect };
+}
+function starSounds(s) {
+  const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
+  for (let k = 1; k <= s; k++) winTimers.push(setTimeout(() => winSound('star', k), landAt(k)));
+  winTimers.push(setTimeout(() => winSound('chime', s), landAt(s) + 380));
+}
+// Stars: how many moves over the best possible still earn 3 and 2 stars, per tier. Easy is gentle for new players.
+const STAR_RULE = { easy: [2, 5], medium: [0, 2], daily: [1, 4] };
+const starsFor = (tier, extra) => { const [a3, a2] = STAR_RULE[tier] || [0, 1]; return extra <= a3 ? 3 : extra <= a2 ? 2 : 1; };
+const movesFor3 = () => W.opt + (STAR_RULE[W.tier] || [0])[0];
+function win() {
+  over = true; clearHint(); winTimers.push(setTimeout(() => sfx('levelDone'), 250));
+  if (mode === 'daily') return dailyWin();
+  const id = W.id, first = !S.stars[id], extra = moves - W.opt;
+  const s = starsFor(W.tier, extra);
+  const prev = S.stars[id] || 0;
+  const coins = first ? TIER[W.tier].reward + s * 5 : Math.max(0, s - prev) * 5;
+  S.stars[id] = Math.max(prev, s); S.current = null;
+  setCoins(S.coins + coins, coins > 0); save();
+  const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
+  const finished = first && allDone();
+  const { starsHtml, perfect } = starBlock(s);
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const brag = () => {
     if (!noPU) return pick([`Solved in ${moves} moves with a little help. Smart use of power-ups!`, `Done in ${moves} moves. Knowing when to use a power-up is a skill too!`]);
@@ -1702,17 +1726,15 @@ function win() {
   const retry = s < 3 && !finished; // fewer than 3 stars: offer a retry, but moving on is always the main choice
   const noPU = !Object.keys(used).length;
   showCard(`<div class="stars${perfect ? ' perfect' : ''}" aria-label="${s} of 3 stars">${starsHtml}</div>
-    <h3>${finished ? 'All levels done!' : s === 3 ? 'Perfect!' : 'Shredded!'}</h3>
+    <h3>${finished ? 'All levels done!' : s === 3 ? (extra <= 0 ? 'Perfect!' : 'Great job!') : 'Shredded!'}</h3>
     <p>${finished ? `You beat all ${LEVELS.length} levels. Unstoppable mode never ends.` : brag()}</p>
     ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
     ${first ? `<div class="unlock"><i style="background:${p.css}"></i><div>New color unlocked<b>${p.name}</b></div><button id="equipBtn">${S.equipped === li ? 'Equipped' : 'Use it'}</button></div>` : ''}
     ${finished ? `<button class="btn" id="goUnst">Play Unstoppable</button>` : ''}
     ${!finished && next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
-    ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
+    ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${movesFor3()} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
-  const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
-  for (let k = 1; k <= s; k++) winTimers.push(setTimeout(() => winSound('star', k), landAt(k)));
-  winTimers.push(setTimeout(() => winSound('chime', s), landAt(s) + 380));
+  starSounds(s);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
@@ -1747,7 +1769,7 @@ function lose(title, msg) {
   const kind = title === "Time's up" ? 'time' : 'moves', any = rescueOptions(kind).some(([, c]) => S.coins >= c);
   showCard(`<h3>${title}</h3><p>${msg}</p>${rescueHtml(kind)}
     <button class="btn${any ? ' alt' : ''}" id="retryBtn">Try again</button><button class="btn alt" id="menuBtn">Menu</button>`);
-  $('retryBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
+  $('retryBtn').onclick = () => mode === 'daily' ? startDaily() : startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
   wireRescue(kind, amt => { over = false; if (kind === 'time') timeLeft += amt; else extraMoves += amt; updateHud(); saveCurrent(); });
 }
 function unstoppableTimeUp() {
@@ -1767,8 +1789,8 @@ function getWorker() {
   if (worker !== null) return worker;
   try {
     const src = $('src-engine').textContent + '\n' + $('src-gen').textContent + `
-self.onmessage = e => { const { stage, seed, d, lo, hi } = e.data;
-  for (let k = 0; k < 8; k++) { CSGen.setSeed(seed + k * 7919); const T = CSGen.unstoppableTier(d, lo, hi); const r = CSGen.generate(T, { cap: 4000 });
+self.onmessage = e => { const { stage, seed, d, lo, hi, over } = e.data;
+  for (let k = 0; k < 8; k++) { CSGen.setSeed(seed + k * 7919); const T = Object.assign(CSGen.unstoppableTier(d, lo, hi), over || {}); const r = CSGen.generate(T, { cap: 4000 });
     if (r.lvl) { postMessage({ stage, lvl: r.lvl, relocs: r.relocs }); return; } }
   postMessage({ stage, error: true }); };`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
@@ -1900,6 +1922,89 @@ function flash(text) {
   setTimeout(() => f.remove(), 1200);
 }
 
+
+// ---------- Daily Challenge ----------
+// One new puzzle a day, the same for everyone (built from the date), with a theme for each weekday and a streak.
+const THEMES = [
+  { name: 'Sunday Stroll', d: 0.25, blurb: 'A relaxed one to end the week' },
+  { name: 'Ice Monday', d: 0.45, over: { iceP: 0.35 }, blurb: 'Lots of frozen blocks' },
+  { name: 'Arrow Tuesday', d: 0.45, over: { axisP: 0.55 }, blurb: 'Blocks that slide one way' },
+  { name: 'Wide Wednesday', d: 0.5, over: { w: [7, 7], h: [8, 8], colors: [6, 7] }, blurb: 'A bigger, busier board' },
+  { name: 'Tiny Thursday', d: 0.45, over: { w: [5, 5], h: [6, 6], fill: [0.85, 0.92], target: [3, 99] }, blurb: 'Small board, tricky solution' },
+  { name: 'Fast Friday', d: 0.4, clock: true, blurb: 'Beat the clock' },
+  { name: 'Super Saturday', d: 0.85, blurb: 'The hardest daily of the week' },
+];
+const dayKey = (date) => { const d = date || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const daySeed = key => { let h = 0x811c9dc5; for (const ch of 'colorshred-daily-' + key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h | 0; };
+const yesterdayKey = () => { const d = new Date(); d.setDate(d.getDate() - 1); return dayKey(d); };
+function dailyState() { S.daily = S.daily || { streak: 0, best: 0, last: null, done: {} }; return S.daily; }
+function liveStreak() { const D = dailyState(); return D.last === dayKey() || D.last === yesterdayKey() ? D.streak : 0; }
+const FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em;vertical-align:-2px"><path d="M12 2c1 4 5 5.5 5 11a5 5 0 0 1-10 0c0-2.4 1.2-4 2.5-5 .1 1.6.8 2.8 2 3.2C11 8 11 5 12 2z"/></svg>';
+function untilMidnight() { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const mins = Math.ceil((m - n) / 60000); return `${Math.floor(mins / 60)}h ${mins % 60}m`; }
+function buildDaily(key, cb) {
+  const theme = THEMES[new Date().getDay()], seed = daySeed(key), msg = { stage: 'daily', seed, d: theme.d, lo: Math.max(0, theme.d - 0.05), hi: Math.min(1, theme.d + 0.05), over: theme.over || null };
+  const here = () => setTimeout(() => { // same recipe as the worker, so the board is identical either way
+    let r = { lvl: null };
+    for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(Object.assign(CSGen.unstoppableTier(msg.d, msg.lo, msg.hi), msg.over || {}), { cap: 4000 }); }
+    cb(r.lvl ? { lvl: r.lvl, relocs: r.relocs } : null);
+  }, 30);
+  const w = getWorker(); if (!w) return here();
+  let done = false; const timer = setTimeout(() => { if (!done) { done = true; delete pending.daily; here(); } }, 12000);
+  pending.daily = res => { if (done) return; done = true; clearTimeout(timer); if (!res || res.error) here(); else cb({ lvl: res.lvl, relocs: res.relocs }); };
+  w.postMessage(msg);
+}
+function startDaily() {
+  cutSounds();
+  const key = dayKey(), D = dailyState(), theme = THEMES[new Date().getDay()];
+  if (D.done[key]) return showDailyDone(key);
+  mode = 'daily'; U = null; rescues = 0; resetCombo(); W = null;
+  show('play');
+  $('lvName').textContent = 'Daily'; $('lvTier').textContent = theme.name; $('play').style.setProperty('--tc', '#FF8A3D');
+  $('movesLabel').textContent = 'Moves left';
+  const go = res => {
+    if (mode !== 'daily') return;
+    if (!res) { toast("Couldn't build today's puzzle. Try again in a moment."); return renderWelcome(); }
+    S.dailyCache = { key, lvl: res.lvl, relocs: res.relocs }; save();
+    W = clone(res.lvl); W.tier = 'daily'; W.id = 'daily-' + key; W.opt = W.blocks.length + res.relocs; W.moves = W.opt + 6;
+    if (theme.clock) W.time = 40 + W.blocks.length * 4;
+    ctx = null; rebuildCtx();
+    pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; used = {}; hist = []; over = false; busy = false; armed = null;
+    timeLeft = W.time || 0;
+    buildBoard(); updateHud();
+  };
+  if (S.dailyCache && S.dailyCache.key === key) return go(S.dailyCache);
+  showGenerating(); buildDaily(key, go);
+}
+function dailyWin() {
+  const key = dayKey(), D = dailyState(), extra = moves - W.opt, s = starsFor('daily', extra), first = !D.done[key];
+  let coins = 0, bonus = '';
+  if (first) {
+    D.streak = D.last === yesterdayKey() ? D.streak + 1 : 1; D.last = key; D.best = Math.max(D.best || 0, D.streak);
+    coins = 40 + 10 * Math.min(D.streak, 10) + s * 5;
+    if (D.streak === 7) { coins += 150; bonus = 'One-week streak bonus!'; }
+    if (D.streak === 30) { coins += 500; bonus = 'One-month streak bonus!'; }
+  }
+  D.done[key] = Math.max(D.done[key] || 0, s); save(); setCoins(S.coins + coins, coins > 0);
+  const { starsHtml, perfect } = starBlock(s), tomorrow = THEMES[(new Date().getDay() + 1) % 7].name;
+  showCard(`<div class="stars${perfect ? ' perfect' : ''}" aria-label="${s} of 3 stars">${starsHtml}</div>
+    <h3>Daily done!</h3><p>${THEMES[new Date().getDay()].name} solved in ${moves} moves. The best possible is ${W.opt}.</p>
+    <div class="streak">${FLAME}<b>${D.streak}</b><span>day streak${D.streak === 1 ? '' : ''}</span></div>
+    ${bonus ? `<p class="goal" style="color:var(--accent)">${bonus}</p>` : ''}
+    ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
+    <p class="goal">Next: ${tomorrow}, in ${untilMidnight()}</p>
+    <button class="btn" id="menuBtn">Menu</button><button class="btn alt" id="goUnst">Play Unstoppable</button>`);
+  starSounds(s);
+  $('menuBtn').onclick = renderWelcome; $('goUnst').onclick = startUnstoppable;
+}
+function showDailyDone(key) {
+  const D = dailyState(), s = D.done[key], tomorrow = THEMES[(new Date().getDay() + 1) % 7].name;
+  show('welcome');
+  showCard(`<h3>Daily done!</h3><p>You earned ${'★'.repeat(s)} on today's puzzle.</p>
+    <div class="streak">${FLAME}<b>${liveStreak()}</b><span>day streak · best ${D.best || 0}</span></div>
+    <p class="goal">Next: ${tomorrow}, in ${untilMidnight()}</p><button class="btn" id="okBtn">OK</button>`);
+  $('okBtn').onclick = renderWelcome;
+}
+
 // ---------- controls ----------
 function undo() {
   if (!hist.length || busy || drag || over) return;
@@ -1912,6 +2017,7 @@ function undo() {
 function restart() {
   if (busy || drag) return;
   if (mode === 'campaign') { S.current = null; startCampaign(li, false); return; }
+  if (mode === 'daily') { startDaily(); return; }
   // Unstoppable: reset this board; the clock keeps running
   W.blocks = clone(W.__orig); rebuildCtx();
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; hist = []; armed = null; clearHint();
@@ -2025,6 +2131,7 @@ $('playBtn').onclick = () => {
   startCampaign(n, false);
 };
 $('unstBtn').onclick = startUnstoppable;
+$('dailyBtn').onclick = startDaily;
 $('levelsBtn').onclick = renderLevels;
 $('colorsBtn').onclick = renderColors;
 $('settingsBtn').onclick = showSettings;
@@ -2051,7 +2158,7 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, soundState: () => ({ pending: winTimers.length, masterLive: !!master, masterGain: master ? master.gain.value : null }), transitions: () => transitions, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, daily: startDaily, dayKey, buildDaily, soundState: () => ({ pending: winTimers.length, masterLive: !!master, masterGain: master ? master.gain.value : null }), transitions: () => transitions, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
 
