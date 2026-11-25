@@ -208,6 +208,22 @@ button:disabled { cursor: default; }
 @keyframes starGlow { 0%, 100% { filter: drop-shadow(0 0 5px #ffc93c99); } 50% { filter: drop-shadow(0 0 16px #ffe27a) brightness(1.18); } }
 @keyframes slotLit { to { fill: #ffc93c55; stroke: #ffe27a; } }
 @keyframes ring { 0% { opacity: .9; transform: scale(.5); } 100% { opacity: 0; transform: scale(1.35); } }
+/* 3 stars: the stars keep shining (stronger glow, light sweep, rays behind the middle star, twinkling sparkles) */
+.stars { position: relative; }
+.slot svg { z-index: 1; }
+.stars.perfect .slot.on .full { animation: starDrop .6s cubic-bezier(.3, 1.45, .5, 1) var(--d) forwards, starGlowBig 1.4s ease-in-out calc(var(--d) + .6s) infinite; }
+@keyframes starGlowBig { 0%, 100% { filter: drop-shadow(0 0 8px #ffc93caa); } 50% { filter: drop-shadow(0 0 22px #ffe27a) brightness(1.3); } }
+.sweep { opacity: 0; animation: sweep 2.8s ease-in-out var(--sw) infinite; }
+@keyframes sweep { 0% { opacity: 1; transform: translateX(-70px); } 35% { opacity: 1; transform: translateX(150px); } 36%, 100% { opacity: 0; transform: translateX(150px); } }
+.stars.perfect .slot.mid::before { content: ""; position: absolute; inset: -46px; border-radius: 50%; z-index: 0; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, #ffe27a55 0deg 10deg, transparent 10deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%);
+  animation: raysIn .8s ease-out 1.5s forwards, spinRays 9s linear 1.5s infinite; }
+@keyframes raysIn { to { opacity: 1; } }
+@keyframes spinRays { to { transform: rotate(360deg); } }
+.sparkle { position: absolute; width: 16px; height: 16px; fill: #fff6c8; z-index: 2; pointer-events: none; opacity: 0;
+  filter: drop-shadow(0 0 4px #ffe27a); animation: twinkle 1.6s ease-in-out var(--tw) infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
 .goal { font-size: 13px; color: var(--muted); margin: 8px 0 0; font-weight: 700; }
 .reward { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 26px; color: var(--accent); margin-bottom: 10px; }
 .reward .coin { width: 26px; height: 26px; }
@@ -236,7 +252,8 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 @media (prefers-reduced-motion: reduce) {
   .block, .block.exiting, .block.blasting { transition-duration: 1ms; }
   .block.hint, .gate.pulse, .floater, .flash, .spinner, .slot::after, .slot.on .empty { animation: none; }
-  .slot.on .full { animation: none; opacity: 1; }
+  .slot.on .full, .stars.perfect .slot.on .full { animation: none; opacity: 1; filter: drop-shadow(0 0 12px #ffe27a); }
+  .sweep, .sparkle, .stars.perfect .slot.mid::before { animation: none; }
   .slot.on .empty { fill: #ffc93c55; }
 }
 </style>
@@ -830,8 +847,14 @@ function win() {
   const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
   const finished = first && allDone();
   const STAR = '<path d="M50 4l13.5 28.6 31.3 3.9-23 21.6 6 31L50 74 22.2 89.1l6-31-23-21.6 31.3-3.9z"/>';
+  const perfect = s === 3, shineAt = 0.25 + 2 * 0.38 + 0.6; // the shine starts once the third star has landed
+  const sweep = k => perfect ? `<defs><clipPath id="sclip${k}">${STAR}</clipPath><linearGradient id="sgrad${k}" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+      <g clip-path="url(#sclip${k})"><rect class="sweep" style="--sw:${(shineAt + (k - 1) * 0.18).toFixed(2)}s" x="0" y="-20" width="34" height="140" fill="url(#sgrad${k})" transform="skewX(-20)"/></g>` : '';
   const starsHtml = [1, 2, 3].map(k => `<div class="slot${k === 2 ? ' mid' : ''}${k <= s ? ' on' : ''}" style="--d:${0.25 + (k - 1) * 0.38}s">
-    <svg viewBox="0 0 100 100"><g class="empty">${STAR}</g><g class="full">${STAR}</g></svg></div>`).join('');
+    <svg viewBox="0 0 100 100"><g class="empty">${STAR}</g><g class="full">${STAR}</g>${sweep(k)}</svg></div>`).join('')
+    + (perfect ? [[4, 10], [30, -8], [62, 4], [92, 14], [14, 78], [80, 80]].map(([x, y], n) =>
+      `<svg class="sparkle" viewBox="0 0 20 20" style="left:${x}%;top:${y}%;--tw:${(shineAt + n * 0.27).toFixed(2)}s"><path d="M10 0c.8 5.6 4.4 9.2 10 10-5.6.8-9.2 4.4-10 10-.8-5.6-4.4-9.2-10-10 5.6-.8 9.2-4.4 10-10z"/></svg>`).join('') : '');
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const brag = () => {
     if (!noPU) return pick([`Solved in ${moves} moves with a little help. Smart use of power-ups!`, `Done in ${moves} moves. Knowing when to use a power-up is a skill too!`]);
@@ -843,7 +866,7 @@ function win() {
   };
   const retry = s < 3 && !finished; // fewer than 3 stars: offer a retry, but moving on is always the main choice
   const noPU = !Object.keys(used).length;
-  showCard(`<div class="stars" aria-label="${s} of 3 stars">${starsHtml}</div>
+  showCard(`<div class="stars${perfect ? ' perfect' : ''}" aria-label="${s} of 3 stars">${starsHtml}</div>
     <h3>${finished ? 'All levels done!' : s === 3 ? 'Perfect!' : 'Shredded!'}</h3>
     <p>${finished ? `You beat all ${LEVELS.length} levels. Unstoppable mode never ends.` : brag()}</p>
     ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
