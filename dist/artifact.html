@@ -182,7 +182,14 @@ button:disabled { cursor: default; }
 
 /* overlays */
 .overlay { position: absolute; inset: 0; background: #0b0c18cc; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: grid; place-items: center; z-index: 20; padding: 16px; overflow-y: auto; }
+  display: flex; z-index: 20; padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.overlay > .card { margin: auto; }
+@media (max-height: 760px) {
+  .card { padding: 18px 18px 16px; } .card h3 { font-size: 30px; } .card p { margin-bottom: 10px; }
+  .btn { padding: 11px; margin-top: 8px; font-size: 17px; }
+  .slot { width: 50px; height: 50px; } .slot.mid { width: 62px; height: 62px; }
+  .unlock { padding: 8px 10px; } .unlock i { width: 34px; height: 34px; } .reward { margin-bottom: 6px; }
+}
 .card { box-sizing: border-box; min-width: 0; width: min(360px, 100%); background: var(--steel); border-radius: 26px; padding: 24px 22px 20px; text-align: center;
   box-shadow: 0 20px 50px #0009, inset 0 2px 0 #ffffff18; }
 .card h3 { font-family: var(--display); font-weight: 400; font-size: 34px; margin: 0 0 6px; }
@@ -201,6 +208,22 @@ button:disabled { cursor: default; }
 @keyframes starGlow { 0%, 100% { filter: drop-shadow(0 0 5px #ffc93c99); } 50% { filter: drop-shadow(0 0 16px #ffe27a) brightness(1.18); } }
 @keyframes slotLit { to { fill: #ffc93c55; stroke: #ffe27a; } }
 @keyframes ring { 0% { opacity: .9; transform: scale(.5); } 100% { opacity: 0; transform: scale(1.35); } }
+/* 3 stars: the stars keep shining (stronger glow, light sweep, rays behind the middle star, twinkling sparkles) */
+.stars { position: relative; }
+.slot svg { z-index: 1; }
+.stars.perfect .slot.on .full { animation: starDrop .6s cubic-bezier(.3, 1.45, .5, 1) var(--d) forwards, starGlowBig 1.4s ease-in-out calc(var(--d) + .6s) infinite; }
+@keyframes starGlowBig { 0%, 100% { filter: drop-shadow(0 0 8px #ffc93caa); } 50% { filter: drop-shadow(0 0 22px #ffe27a) brightness(1.3); } }
+.sweep { opacity: 0; animation: sweep 2.8s ease-in-out var(--sw) infinite; }
+@keyframes sweep { 0% { opacity: 1; transform: translateX(-70px); } 35% { opacity: 1; transform: translateX(150px); } 36%, 100% { opacity: 0; transform: translateX(150px); } }
+.stars.perfect .slot.mid::before { content: ""; position: absolute; inset: -46px; border-radius: 50%; z-index: 0; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, #ffe27a55 0deg 10deg, transparent 10deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%);
+  animation: raysIn .8s ease-out 1.5s forwards, spinRays 9s linear 1.5s infinite; }
+@keyframes raysIn { to { opacity: 1; } }
+@keyframes spinRays { to { transform: rotate(360deg); } }
+.sparkle { position: absolute; width: 16px; height: 16px; fill: #fff6c8; z-index: 2; pointer-events: none; opacity: 0;
+  filter: drop-shadow(0 0 4px #ffe27a); animation: twinkle 1.6s ease-in-out var(--tw) infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
 .goal { font-size: 13px; color: var(--muted); margin: 8px 0 0; font-weight: 700; }
 .reward { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 26px; color: var(--accent); margin-bottom: 10px; }
 .reward .coin { width: 26px; height: 26px; }
@@ -229,7 +252,8 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 @media (prefers-reduced-motion: reduce) {
   .block, .block.exiting, .block.blasting { transition-duration: 1ms; }
   .block.hint, .gate.pulse, .floater, .flash, .spinner, .slot::after, .slot.on .empty { animation: none; }
-  .slot.on .full { animation: none; opacity: 1; }
+  .slot.on .full, .stars.perfect .slot.on .full { animation: none; opacity: 1; filter: drop-shadow(0 0 12px #ffe27a); }
+  .sweep, .sparkle, .stars.perfect .slot.mid::before { animation: none; }
   .slot.on .empty { fill: #ffc93c55; }
 }
 </style>
@@ -246,7 +270,7 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
     <button class="mbtn play" id="playBtn"><span><b>Play</b><small id="playSub">Level 1</small></span>
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
     <button class="mbtn unst" id="unstBtn"><span><b>Unstoppable</b><small id="unstSub">Endless boards against the clock</small></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.2 8.2a5 5 0 1 0 0 7.6L12 12l-6.2-3.8a5 5 0 1 0 0 7.6"/></svg></button>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.7-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z"/></svg></button>
     <div class="mrow">
       <button class="sbtn" id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Levels</button>
       <button class="sbtn" id="colorsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.8-.4-1.2.4-2.2 1.6-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15" cy="7.5" r="1.3" fill="currentColor"/></svg>Colors</button>
@@ -1165,8 +1189,17 @@ function usePower(k, i) {
   if (k === 'thaw' && !CS.frozen(ctx, pos, i)) { toast('Pick a frozen block.'); return; }
   if (k === 'recolor') {
     const cur = ctx.blocks[i].c;
-    const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur);
+    // Only offer colors whose gate this block can actually get through: big enough for its shape,
+    // on a side its arrows allow, and reachable from where it is (walls considered, other blocks ignored).
+    const b = W.blocks[i], a0 = pos[i];
+    const fitsColor = c => {
+      const solo = { w: W.w, h: W.h, walls: W.walls, gates: W.gates, blocks: [{ c, sh: b.sh, x: a0 % W.w, y: Math.floor(a0 / W.w), ax: b.ax || 0 }] };
+      const c2 = CS.makeCtx(solo), p = [a0], occ = CS.occupancy(c2, p);
+      return CS.reachable(c2, occ, p, 0).some(a => CS.canExitFrom(c2, 0, a, occ));
+    };
+    const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur && fitsColor(c));
     armed = null; renderPowers();
+    if (!opts.length) { toast('No other gate is big enough for this block. Pick a different block.'); armed = 'recolor'; renderPowers(); return; }
     showCard(`<h3>Recolor</h3><p>Pick a new color for this block. Costs ${PU.recolor.cost} coins.</p>
       <div class="picks">${opts.map(c => `<button data-c="${c}" style="background:${COLORS[c]}" aria-label="Color ${c + 1}">${symSvg(c, 'p')}</button>`).join('')}</div>
       <button class="btn alt" id="pickCancel">Cancel</button>`);
@@ -1209,19 +1242,34 @@ function win() {
   const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
   const finished = first && allDone();
   const STAR = '<path d="M50 4l13.5 28.6 31.3 3.9-23 21.6 6 31L50 74 22.2 89.1l6-31-23-21.6 31.3-3.9z"/>';
+  const perfect = s === 3, shineAt = 0.25 + 2 * 0.38 + 0.6; // the shine starts once the third star has landed
+  const sweep = k => perfect ? `<defs><clipPath id="sclip${k}">${STAR}</clipPath><linearGradient id="sgrad${k}" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+      <g clip-path="url(#sclip${k})"><rect class="sweep" style="--sw:${(shineAt + (k - 1) * 0.18).toFixed(2)}s" x="0" y="-20" width="34" height="140" fill="url(#sgrad${k})" transform="skewX(-20)"/></g>` : '';
   const starsHtml = [1, 2, 3].map(k => `<div class="slot${k === 2 ? ' mid' : ''}${k <= s ? ' on' : ''}" style="--d:${0.25 + (k - 1) * 0.38}s">
-    <svg viewBox="0 0 100 100"><g class="empty">${STAR}</g><g class="full">${STAR}</g></svg></div>`).join('');
-  const retry = s < 3 && !finished; // fewer than 3 stars: the main button is Retry
+    <svg viewBox="0 0 100 100"><g class="empty">${STAR}</g><g class="full">${STAR}</g>${sweep(k)}</svg></div>`).join('')
+    + (perfect ? [[4, 10], [30, -8], [62, 4], [92, 14], [14, 78], [80, 80]].map(([x, y], n) =>
+      `<svg class="sparkle" viewBox="0 0 20 20" style="left:${x}%;top:${y}%;--tw:${(shineAt + n * 0.27).toFixed(2)}s"><path d="M10 0c.8 5.6 4.4 9.2 10 10-5.6.8-9.2 4.4-10 10-.8-5.6-4.4-9.2-10-10 5.6-.8 9.2-4.4 10-10z"/></svg>`).join('') : '');
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const brag = () => {
+    if (!noPU) return pick([`Solved in ${moves} moves with a little help. Smart use of power-ups!`, `Done in ${moves} moves. Knowing when to use a power-up is a skill too!`]);
+    if (extra <= 0) return pick([`Genius! ${moves} moves, a perfect solve.`, `Flawless! Not a single wasted move in ${moves}.`, `Big brain! ${moves} moves matches the best possible.`]);
+    const more = `${extra} more than a perfect solve`;
+    if (extra <= 2) return pick([`So close! Solved in ${moves} moves, just ${more}!`, `Sharp thinking! ${moves} moves, only ${more}.`]);
+    if (extra <= 5) return pick([`Nice work! Solved in ${moves} moves. A perfect solve takes ${W.opt}.`, `Shredded in ${moves} moves! You're getting closer to perfect (${W.opt}).`]);
+    return pick([`You did it in ${moves} moves! Every level makes you sharper.`, `Solved in ${moves} moves! A perfect solve takes ${W.opt}. Can you find it?`]);
+  };
+  const retry = s < 3 && !finished; // fewer than 3 stars: offer a retry, but moving on is always the main choice
   const noPU = !Object.keys(used).length;
-  showCard(`<div class="stars" aria-label="${s} of 3 stars">${starsHtml}</div>
+  showCard(`<div class="stars${perfect ? ' perfect' : ''}" aria-label="${s} of 3 stars">${starsHtml}</div>
     <h3>${finished ? 'All levels done!' : s === 3 ? 'Perfect!' : 'Shredded!'}</h3>
-    <p>${finished ? `You beat all ${LEVELS.length} levels. Unstoppable mode never ends.` : (noPU ? `${moves} moves. The best possible is ${W.opt}.` : `${moves} moves, with power-ups.`)}</p>
+    <p>${finished ? `You beat all ${LEVELS.length} levels. Unstoppable mode never ends.` : brag()}</p>
     ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
     ${first ? `<div class="unlock"><i style="background:${p.css}"></i><div>New color unlocked<b>${p.name}</b></div><button id="equipBtn">${S.equipped === li ? 'Equipped' : 'Use it'}</button></div>` : ''}
     ${finished ? `<button class="btn" id="goUnst">Play Unstoppable</button>` : ''}
-    ${retry ? `<button class="btn" id="replayBtn">Retry for 3 stars</button><p class="goal">3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>` : ''}
-    ${!finished && next >= 0 ? `<button class="btn${retry ? ' alt' : ''}" id="nextBtn">Next level</button>` : ''}
-    ${retry ? '' : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
+    ${!finished && next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
+    ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
+            : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), (0.25 + (k - 1) * 0.38 + 0.42) * 1000);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
@@ -1265,13 +1313,19 @@ function requestBoard(stage, cb) {
   }, 30);
 }
 function prefetch(stage) {
-  U.next = null; const run = U;
+  U.next = null; U.fetching = true; const run = U;
   requestBoard(stage, res => {
     if (U !== run) return;
     if (res.error) return prefetch(stage);
-    U.next = res;
+    U.next = res; U.fetching = false;
     if (U.waiting) { U.waiting = false; loadUnstoppableBoard(); }
   });
+}
+// A quick, easy board (stage-1 difficulty), made on the spot when the clock is nearly out.
+function easyBoard() {
+  let r = { lvl: null };
+  for (let k = 0; k < 20 && !r.lvl; k++) { CSGen.setSeed((Date.now() + k * 7919) | 0); r = CSGen.generate(CSGen.unstoppableTier(1), { cap: 4000 }); }
+  return r.lvl ? { lvl: r.lvl, relocs: r.relocs } : null;
 }
 function startUnstoppable() {
   mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true };
@@ -1286,21 +1340,23 @@ function showGenerating() {
   $('stage').innerHTML = '<div class="gen"><div><div class="spinner"></div>Building the next board…</div></div>';
   $('powers').innerHTML = '';
 }
-function loadUnstoppableBoard() {
-  const res = U.next; U.next = null;
+function loadUnstoppableBoard(given) {
+  const res = given || U.next; if (!given) U.next = null;
   W = res.lvl; W.__orig = clone(W.blocks); W.tier = 'unstoppable'; W.opt = W.blocks.length + res.relocs;
   ctx = null; rebuildCtx();
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
   $('lvName').textContent = 'Stage ' + U.stage;
   buildBoard(); updateHud();
-  if (U.stage > 1) flash('Stage ' + U.stage);
-  prefetch(U.stage + 1);
+  if (given) flash('Easy one!'); else if (U.stage > 1) flash('Stage ' + U.stage);
+  // keep a regular board ready (an easy board doesn't use up the one already waiting)
+  if (!U.next && !U.fetching) prefetch(U.stage + 1);
 }
 function unstoppableClear() {
   // Time bonus: 10 seconds, plus more for harder boards (extra moves the board needed, and its size), up to 30 seconds.
   const relocs = W.opt - W.blocks.length;
   const bonus = 10 + Math.min(20, relocs * 2 + Math.floor(Math.max(0, W.blocks.length - 10) / 3));
   const coins = 5 + Math.floor(U.stage / 2);
+  const rescue = timeLeft < 12; // nearly out of time when solved: the next board is an easy one
   U.cleared++; U.earned += coins; timeLeft += bonus;
   setCoins(S.coins + coins, true); sfx('coin');
   flash(`+${bonus}s`);
@@ -1309,7 +1365,9 @@ function unstoppableClear() {
   busy = true;
   setTimeout(() => {
     busy = false;
-    if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
+    const easy = rescue && easyBoard();
+    if (easy) loadUnstoppableBoard(easy);
+    else if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
   }, 650);
 }
 function endRun(quit) {
@@ -1455,12 +1513,14 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrent(); });
 applyTheme();
 renderWelcome();
+// Ask the phone to keep this game's saved data instead of clearing it when storage runs low
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
 // Tip for Safari users who opened the web address but haven't installed it yet
 try {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); } };
 })();
 </script>
