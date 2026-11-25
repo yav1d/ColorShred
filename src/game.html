@@ -152,12 +152,14 @@ button:disabled { cursor: default; }
 .field.arming { box-shadow: inset 0 3px 8px #0008, 0 0 0 3px var(--accent); }
 .wall { position: absolute; border-radius: calc(var(--cs) * .14);
   background: repeating-linear-gradient(45deg, #3a3c5e 0 6px, #303252 6px 12px); box-shadow: inset 0 -3px 0 #0005, inset 0 2px 0 #ffffff12; }
-.gate { position: absolute; border-radius: calc(var(--cs) * .16); overflow: hidden; display: grid; place-items: center;
+.gate { position: absolute; border-radius: calc(var(--cs) * .16); overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 2px;
   background: var(--gc); box-shadow: inset 0 0 0 2px #0003; }
 .gate::before { content: ""; position: absolute; inset: 0; opacity: .55; }
 .gate.v::before { background: repeating-linear-gradient(0deg, transparent 0 5px, #0005 5px 7px); }
 .gate.h::before { background: repeating-linear-gradient(90deg, transparent 0 5px, #0005 5px 7px); }
-.gate svg { position: relative; width: 70%; height: 70%; color: #fff; filter: drop-shadow(0 1px 0 #0006); }
+.gate.v { flex-direction: column; }
+.gate svg { position: relative; width: calc(var(--cs) * .3); height: calc(var(--cs) * .3); flex: none; color: #fff; filter: drop-shadow(0 1px 0 #0006); }
+.gate svg.gsym { fill: #fff; width: calc(var(--cs) * .34); height: calc(var(--cs) * .34); }
 .gate.pulse { animation: gpulse .5s ease-out; }
 @keyframes gpulse { 50% { filter: brightness(1.6); transform: scale(1.08); } }
 .block { position: absolute; left: 0; top: 0; will-change: transform; transition: transform 70ms linear; }
@@ -165,10 +167,8 @@ button:disabled { cursor: default; }
 .block.exiting { transition: transform 300ms cubic-bezier(.5,0,.9,.6); z-index: 4; }
 .block.blasting { transition: transform 260ms ease-in, opacity 260ms ease-in; opacity: 0; z-index: 4; }
 .cell { position: absolute; background: var(--bc); }
-.cell::after { content: ""; position: absolute; left: 30%; top: 26%; width: 40%; height: 40%; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffffb0, #ffffff22 45%, transparent 70%); }
-.glyph { position: absolute; display: grid; place-items: center; pointer-events: none; color: #fff; }
-.glyph svg { width: calc(var(--cs) * .62); height: calc(var(--cs) * .62); filter: drop-shadow(0 1px 1px #0007); }
+.sym { position: absolute; pointer-events: none; fill: var(--bd); filter: drop-shadow(0 1.5px 0 #ffffff59); overflow: visible; }
+.chev { position: absolute; pointer-events: none; overflow: visible; fill: #fff; filter: drop-shadow(0 1px 1px #0008); }
 .ice { position: absolute; pointer-events: none; background: linear-gradient(135deg, #e8f6ff99, #bfe3ff55 50%, #e8f6ff99);
   box-shadow: inset 0 0 0 2px #ffffffaa; display: grid; place-items: center;
   font-family: var(--display); color: #2b5b86; font-size: calc(var(--cs) * .55); transition: opacity .4s; }
@@ -176,7 +176,6 @@ button:disabled { cursor: default; }
 @keyframes shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
 .ghost { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
 .ghost .cell { background: transparent; box-shadow: none !important; outline: 3px dashed #fff; outline-offset: -4px; }
-.ghost .cell::after { display: none; }
 .block.hint { animation: hint 1s ease-in-out infinite; }
 @keyframes hint { 50% { filter: brightness(1.5) drop-shadow(0 0 10px #fff); } }
 .shred { position: absolute; pointer-events: none; border-radius: 2px; z-index: 6; }
@@ -216,7 +215,8 @@ button:disabled { cursor: default; }
 .btn.danger { background: #ff6b6b22; color: var(--danger); }
 .btn:disabled { opacity: .4; }
 .picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 6px 0 4px; }
-.picks button { width: 54px; height: 54px; border-radius: 16px; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
+.picks button { width: 54px; height: 54px; border-radius: 16px; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; display: grid; place-items: center; }
+.picks svg { width: 28px; height: 28px; fill: #00000055; }
 .rules { text-align: left; display: grid; gap: 10px; margin: 6px 0 14px; color: var(--text); font-size: 15px; line-height: 1.4; font-weight: 600; }
 .rules div { display: flex; gap: 10px; }
 .rules b { color: var(--accent); font-family: var(--display); font-weight: 400; font-size: 18px; min-width: 18px; }
@@ -314,6 +314,20 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 'use strict';
 const LEVELS = window.CS_LEVELS, LEGACY = window.CS_LEGACY || [];
 const COLORS = ['#F2545B','#FF8A3D','#FFC93C','#9BD43A','#23B06A','#1FB5B0','#39A0F0','#4F63E8','#9A5BE8','#E9509F'];
+// Every color also has its own symbol, drawn on its blocks and its gates (easier to tell colors apart).
+const SYMBOLS = [
+  '<circle cx="12" cy="12" r="8.5"/>',                                                    // red: circle
+  '<rect x="4" y="4" width="16" height="16" rx="2.5"/>',                                   // orange: square
+  '<path d="M12 2 22 12 12 22 2 12z"/>',                                                   // yellow: diamond
+  '<path d="M12 3.2 21.5 20H2.5z"/>',                                                      // lime: triangle
+  '<ellipse cx="12" cy="12" rx="10.5" ry="7"/>',                                             // green: oval
+  '<path d="M7.2 3.5h9.6l4.9 8.5-4.9 8.5H7.2L2.3 12z"/>',                                  // teal: hexagon
+  '<path d="M9 2.5h6v6.5h6.5v6H15v6.5H9V15H2.5V9H9z"/>',                                   // sky: plus
+  '<path d="M12 1.8l3.1 6.5 7.1.9-5.2 4.9 1.4 7L12 17.6l-6.4 3.5 1.4-7-5.2-4.9 7.1-.9z"/>', // blue: star
+  '<path d="M12 2.5l9.5 6.9-3.6 11.1H6.1L2.5 9.4z"/>',                                     // violet: pentagon
+  '<path d="M12 21.5S2.5 15.6 2.5 9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.5 3c0 6.6-9.5 12.5-9.5 12.5z"/>', // pink: heart
+];
+const symSvg = (c, cls, style) => `<svg class="${cls || 'sym'}" viewBox="0 0 24 24"${style ? ` style="${style}"` : ''}>${SYMBOLS[c]}</svg>`;
 const TIERS = ['easy', 'medium', 'hard', 'superhard'];
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
@@ -568,7 +582,8 @@ function buildBoard() {
     const inset = 3;
     if (vert) Object.assign(d.style, { top: gt + g.p * cs + inset + 'px', height: g.n * cs - 2 * inset + 'px', width: gt - 4 + 'px', left: (g.s === 'L' ? 2 : gt + Wd * cs + 2) + 'px' });
     else Object.assign(d.style, { left: gt + g.p * cs + inset + 'px', width: g.n * cs - 2 * inset + 'px', height: gt - 4 + 'px', top: (g.s === 'T' ? 2 : gt + H * cs + 2) + 'px' });
-    d.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="${ARROW(g.s)}"/></svg>`;
+    const arrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="${ARROW(g.s)}"/></svg>`;
+    d.innerHTML = symSvg(g.c, 'gsym') + (g.n > 1 ? arrow : ''); // a 1-cell gate only has room for the symbol
     frame.appendChild(d);
   });
   stage.appendChild(frame);
@@ -601,14 +616,18 @@ function makeShape(b, ghost) {
     c.style.boxShadow = shd.join(',') || 'none';
     el.appendChild(c);
   }
-  if (!ghost && b.ax) {
-    const g = document.createElement('div'); g.className = 'glyph';
-    Object.assign(g.style, { left: 0, top: 0, width: '100%', height: '100%' });
-    if (si.cells.length !== si.w * si.h) { const [x, y] = si.cells[0]; Object.assign(g.style, { left: x * cs + 'px', top: y * cs + 'px', width: cs + 'px', height: cs + 'px' }); }
-    g.innerHTML = b.ax === 1
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>';
-    el.appendChild(g);
+  if (!ghost) {
+    const sz = Math.round(cs * 0.5), off = Math.round((cs - sz) / 2), ch = Math.round(cs * 0.2);
+    let html = '';
+    for (const [x, y] of si.cells) {
+      html += symSvg(b.c, 'sym', `left:${x * cs + off}px;top:${y * cs + off - Math.round(cs * .02)}px;width:${sz}px;height:${sz}px`);
+      // arrow blocks: small chevrons on each cell's edges show the only way it can slide
+      if (b.ax === 1 && !has(x - 1, y)) html += `<svg class="chev" viewBox="0 0 10 10" style="left:${x * cs + Math.round(cs * .06)}px;top:${y * cs + (cs - ch) / 2}px;width:${ch}px;height:${ch}px"><path d="M7 1 2 5l5 4z"/></svg>`;
+      if (b.ax === 1 && !has(x + 1, y)) html += `<svg class="chev" viewBox="0 0 10 10" style="left:${x * cs + cs - ch - Math.round(cs * .06)}px;top:${y * cs + (cs - ch) / 2}px;width:${ch}px;height:${ch}px"><path d="M3 1l5 4-5 4z"/></svg>`;
+      if (b.ax === 2 && !has(x, y - 1)) html += `<svg class="chev" viewBox="0 0 10 10" style="left:${x * cs + (cs - ch) / 2}px;top:${y * cs + Math.round(cs * .05)}px;width:${ch}px;height:${ch}px"><path d="M1 7l4-5 4 5z"/></svg>`;
+      if (b.ax === 2 && !has(x, y + 1)) html += `<svg class="chev" viewBox="0 0 10 10" style="left:${x * cs + (cs - ch) / 2}px;top:${y * cs + cs - ch - Math.round(cs * .09)}px;width:${ch}px;height:${ch}px"><path d="M1 3l4 5 4-5z"/></svg>`;
+    }
+    el.insertAdjacentHTML('beforeend', html);
   }
   if (!ghost && b.ice) {
     for (const [x, y] of si.cells) {
@@ -763,7 +782,7 @@ function usePower(k, i) {
     const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur);
     armed = null; renderPowers();
     showCard(`<h3>Recolor</h3><p>Pick a new color for this block. Costs ${PU.recolor.cost} coins.</p>
-      <div class="picks">${opts.map(c => `<button data-c="${c}" style="background:${COLORS[c]}" aria-label="Color ${c + 1}"></button>`).join('')}</div>
+      <div class="picks">${opts.map(c => `<button data-c="${c}" style="background:${COLORS[c]}" aria-label="Color ${c + 1}">${symSvg(c, 'p')}</button>`).join('')}</div>
       <button class="btn alt" id="pickCancel">Cancel</button>`);
     $('card').querySelectorAll('.picks button').forEach(b => b.onclick = () => {
       hideOverlay(); spend('recolor'); W.blocks[i].c = +b.dataset.c; rebuildCtx(); redrawBlock(i); sfx('magic');
@@ -971,7 +990,7 @@ function hideOverlay() { $('overlay').hidden = true; }
 function showRules() {
   showCard(`<h3>How to play</h3><div class="rules">
     <div><b>1</b><span>Drag a block. It slides around other blocks and stops at walls.</span></div>
-    <div><b>2</b><span>Push it into a gate of the same color to shred it. It must fit the gate, and nothing can be in its way.</span></div>
+    <div><b>2</b><span>Push it into a gate of the same color and symbol to shred it. It must fit the gate, and nothing can be in its way.</span></div>
     <div><b>3</b><span>Arrow blocks only slide along their arrows. Ice blocks thaw after you shred the number of blocks shown.</span></div>
     <div><b>4</b><span>Every drag uses one move. Power-ups cost coins and are limited on each level.</span></div>
     <div><b>5</b><span>Beat a level to unlock the next one, earn coins and win a new board color.</span></div>
