@@ -245,6 +245,31 @@ button:disabled { cursor: default; }
 .rules b { color: var(--accent); font-family: var(--display); font-weight: 400; font-size: 18px; min-width: 18px; }
 textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius: 12px; border: 0; padding: 10px; background: #0005; color: var(--text);
   font: 600 12px/1.4 ui-monospace, Menlo, monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
+.sndpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sndpick .btn { font-size: 14px; padding: 11px 4px; margin-top: 6px; }
+.sndpick .btn.on { background: var(--accent); color: #241a00; }
+.rescue-box { margin: 4px 0 6px; padding: 12px 12px 14px; border-radius: 22px; background: linear-gradient(180deg, #ffc93c2b, #ff8a3d14);
+  box-shadow: 0 0 0 3px var(--accent), 0 0 26px #ffc93c55; animation: rescueIn .5s cubic-bezier(.3, 1.5, .5, 1) both, rescueGlow 1.6s ease-in-out .5s infinite; }
+.rescue-box.broke { box-shadow: 0 0 0 2px #ffffff22; background: #ffffff08; animation: none; }
+@keyframes rescueIn { from { transform: scale(.85); opacity: 0; } }
+@keyframes rescueGlow { 50% { box-shadow: 0 0 0 3px #ffe27a, 0 0 40px #ffc93c99; } }
+.rescue-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 10px; }
+.rescue-head .keep { font-family: var(--display); font-size: 30px; margin-left: 6px; transform-origin: left center; line-height: 1; color: var(--accent); text-shadow: 0 3px 0 #0006;
+  display: inline-block; transform: rotate(-3deg); animation: keepPop .6s cubic-bezier(.3, 1.8, .5, 1) .15s both; }
+.rescue-box.broke .keep { color: var(--muted); transform: none; animation: none; font-size: 24px; }
+@keyframes keepPop { from { transform: rotate(-3deg) scale(.3); opacity: 0; } }
+.rescue-head .coins { font-size: 16px; }
+.broke-note { margin: -4px 2px 10px !important; text-align: left; font-size: 13px !important; }
+.rescue { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ropt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 4px 10px; border-radius: 16px; min-width: 0;
+  background: linear-gradient(180deg, #ffc93c2e, #ffc93c14); box-shadow: inset 0 0 0 2px #ffc93c66, inset 0 -4px 0 #0003; }
+.ropt b { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--accent); }
+.ropt span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+.ropt em { font-style: normal; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 15px; }
+.ropt em .coin { width: 15px; height: 15px; }
+.ropt small { font-size: 10px; color: var(--danger); }
+.ropt:disabled { opacity: .45; box-shadow: inset 0 0 0 2px #ffffff22; background: #ffffff0a; }
+.ropt:not(:disabled):active { transform: scale(.96); }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .row2 .btn { margin-top: 10px; }
 .toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: #000d; padding: 10px 16px; border-radius: 12px;
@@ -252,6 +277,7 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 @media (prefers-reduced-motion: reduce) {
   .block, .block.exiting, .block.blasting { transition-duration: 1ms; }
   .block.hint, .gate.pulse, .floater, .flash, .spinner, .slot::after, .slot.on .empty { animation: none; }
+  .rescue-box, .rescue-head .keep { animation: none; }
   .slot.on .full, .stars.perfect .slot.on .full { animation: none; opacity: 1; filter: drop-shadow(0 0 12px #ffe27a); }
   .sweep, .sparkle, .stars.perfect .slot.mid::before { animation: none; }
   .slot.on .empty { fill: #ffc93c55; }
@@ -376,7 +402,7 @@ function prize(li) {
 const KEY = 'colorshred:save2';
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, seenRules: false, best: 0, bestCleared: 0, current: null }; }
+function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, shredStyle: 'arcade', sndPicked: false, seenRules: false, best: 0, bestCleared: 0, current: null }; }
 let S = freshSave();
 (function loadSave() {
   try {
@@ -390,6 +416,7 @@ let S = freshSave();
     S.coins += Object.values(S.stars).reduce((a, n) => a + 20 + n * 5, 0);
   } catch (e) { S = freshSave(); }
 })();
+if (!S.sndPicked) S.shredStyle = 'arcade'; // the default sound is Arcade bling unless someone picked another
 function save() { lsSet(KEY, JSON.stringify(S)); }
 const idx = {}; LEVELS.forEach((l, i) => { idx[l.id] = i; });
 const cleared = i => !!S.stars[LEVELS[i].id];
@@ -423,8 +450,238 @@ function comboStep() {
   comboN = now - comboT < 2500 ? Math.min(comboN + 1, SCALE.length - 1) : 0;
   comboT = now; return comboN;
 }
-function shredSound(ac, t, step) {
+// Three shred sounds to choose from in Settings. All of them climb the scale on a streak.
+const SHRED_SOUNDS = { paper: 'Paper rip', bubble: 'Bubble pop', arcade: 'Arcade bling' };
+function shredSound(ac, t, step, style) {
   const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+  style = style || S.shredStyle || 'arcade';
+  if (style === 'bubble') return bubbleShred(ac, t, step, out);
+  if (style === 'arcade') return arcadeShred(ac, t, step, out);
+  paperShred(ac, t, step, out);
+}
+const note = (ac, out, type, f, t0, peak, dur, f1) => { // one shaped tone, optionally gliding to f1
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur * 0.6);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(out); o.start(t0); o.stop(t0 + dur + 0.02);
+};
+// Bubble pop: a round "bloop", a tiny pop, and a soft marimba note with a water-drop chirp.
+function bubbleShred(ac, t, step, out) {
+  const f0 = 523.25 * Math.pow(2, SCALE[step] / 12);
+  note(ac, out, 'sine', 820, t, 0.42, 0.13, 190);                    // bloop (falling)
+  const n = Math.floor(ac.sampleRate * 0.025), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const src = ac.createBufferSource(), hp = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = b; hp.type = 'highpass'; hp.frequency.value = 2500; g.gain.value = 0.35;
+  src.connect(hp).connect(g).connect(out); src.start(t + 0.07);       // pop
+  const tc = t + 0.1;
+  note(ac, out, 'sine', f0, tc, 0.26, 0.38);                          // marimba body
+  note(ac, out, 'sine', f0 * 4, tc, 0.05, 0.09);                      // marimba knock
+  note(ac, out, 'sine', f0 * 1.5, tc + 0.04, 0.07, 0.12, f0 * 3);     // water-drop chirp (rising)
+  if (step >= 4) note(ac, out, 'sine', f0 * 2, tc + 0.12, 0.08, 0.25);
+}
+// Arcade bling: a quick retro zap and a three-note sparkle arpeggio, like collecting a prize.
+function arcadeShred(ac, t, step, out) {
+  out.gain.value = 2.2; // square waves are quiet at these levels: match the loudness of the other two
+  const f0 = 523.25 * Math.pow(2, SCALE[step] / 12);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; lp.connect(out);
+  note(ac, lp, 'square', 1300, t, 0.07, 0.09, 180);                   // zap (falling)
+  const tc = t + 0.08;
+  [[1, 0], [1.26, 0.05], [1.5, 0.1]].forEach(([m, dt]) => note(ac, lp, 'square', f0 * m, tc + dt, 0.06, 0.09));
+  note(ac, lp, 'square', f0 * 2, tc + 0.15, 0.06, 0.26);              // final ring
+  note(ac, out, 'triangle', f0 * 2, tc + 0.15, 0.1, 0.3);             // soften the square with a triangle twin
+  if (step >= 4) note(ac, out, 'triangle', f0 * 3, tc + 0.22, 0.06, 0.2);
+}
+// Arcade jingles for winning (always arcade style). Notes are in Hz, built from C5.
+const C5 = 523.25, nt = st => C5 * Math.pow(2, st / 12);
+function jingleOut(ac) {
+  const out = ac.createGain(); out.gain.value = 2.0; out.connect(ac.destination);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000; lp.connect(out);
+  return { out, lp };
+}
+const JINGLES = {
+  // level complete: a bouncy rising run that lands on a bright held chord
+  levelDone(ac, t) {
+    const { out, lp } = jingleOut(ac);
+    [0, 4, 7, 12, 7, 12, 16].forEach((st, k) => note(ac, lp, 'square', nt(st), t + k * 0.065, 0.05, 0.09));
+    [12, 16, 19].forEach(st => note(ac, out, 'triangle', nt(st), t + 0.47, 0.09, 0.5));
+    note(ac, lp, 'square', nt(24), t + 0.47, 0.035, 0.45);
+  },
+  // each star: a coin-like two-step blip, a little higher for every star
+  star1(ac, t) { starBlip(ac, t, 7); },
+  star2(ac, t) { starBlip(ac, t, 12); },
+  star3(ac, t) { starBlip(ac, t, 16); },
+  // after the last star: a rolled sparkly chord (bigger for a perfect 3 stars)
+  winChime(ac, t) { winRoll(ac, t, [12, 16, 19, 24], 0.55); },
+  winChimeBig(ac, t) {
+    winRoll(ac, t, [12, 16, 19, 24, 28, 31, 36], 0.9);
+    const { out } = jingleOut(ac);
+    [36, 40, 43].forEach((st, k) => note(ac, out, 'sine', nt(st), t + 0.45 + k * 0.09, 0.05, 0.35)); // twinkles on top
+  },
+  // out of moves or time: a playful descending "wah-wah-wahhh" (sad, but not too sad)
+  lose(ac, t) {
+    const { out, lp } = jingleOut(ac);
+    [[7, 0], [6, 0.2], [5, 0.4]].forEach(([st, dt]) => note(ac, lp, 'square', nt(st - 12), t + dt, 0.05, 0.18));
+    const o = ac.createOscillator(), g = ac.createGain(), v = ac.createOscillator(), vg = ac.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(nt(4 - 12), t + 0.6); o.frequency.exponentialRampToValueAtTime(nt(-1 - 12), t + 1.3);
+    v.frequency.value = 7; vg.gain.value = 6; v.connect(vg).connect(o.frequency); // wobble
+    g.gain.setValueAtTime(0.0001, t + 0.6); g.gain.exponentialRampToValueAtTime(0.05, t + 0.62); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.35);
+    o.connect(g).connect(lp); o.start(t + 0.6); o.stop(t + 1.4); v.start(t + 0.6); v.stop(t + 1.4);
+    note(ac, out, 'triangle', nt(-8), t + 0.6, 0.08, 0.7);
+  },
+  // Unstoppable board cleared: a short three-note "bling"
+  boardClear(ac, t) {
+    const { lp } = jingleOut(ac);
+    [7, 12, 16].forEach((st, k) => note(ac, lp, 'square', nt(st), t + 0.18 + k * 0.06, 0.045, 0.12));
+  },
+};
+function starBlip(ac, t, st) {
+  const { out, lp } = jingleOut(ac);
+  note(ac, lp, 'square', nt(st), t, 0.05, 0.07);
+  note(ac, lp, 'square', nt(st + 7), t + 0.06, 0.05, 0.22);
+  note(ac, out, 'triangle', nt(st + 7), t + 0.06, 0.08, 0.3);
+}
+function winRoll(ac, t, steps, ring) {
+  const { out, lp } = jingleOut(ac);
+  steps.forEach((st, k) => {
+    note(ac, out, 'triangle', nt(st), t + k * 0.05, 0.08, ring);
+    note(ac, lp, 'square', nt(st), t + k * 0.05, 0.025, 0.12);
+  });
+}
+// ---- Star and win-chime sound styles (the result screen). One is used for everyone; candidates kept for comparing.
+const WIN_STYLE = 'sparkle'; // chosen by the family: Sparkle pop for 2 and 3 stars
+function verb(ac, secs, wet) { // small generated room echo
+  const len = Math.floor(ac.sampleRate * secs), ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+  const cv = ac.createConvolver(); cv.buffer = ir; const g = ac.createGain(); g.gain.value = wet;
+  cv.connect(g).connect(ac.destination); return cv;
+}
+function bus(ac, vol, wet, secs) { const g = ac.createGain(); g.gain.value = vol; g.connect(ac.destination); if (wet) g.connect(verb(ac, secs || 1.6, wet)); return g; }
+function bell(ac, out, f, t0, v, len) { // glass bell: a few inharmonic partials, the high ones fade first
+  [[1, 1, 1], [2.76, 0.45, 0.6], [5.4, 0.22, 0.35], [8.93, 0.1, 0.2]].forEach(([m, a, dl]) => note(ac, out, 'sine', f * m, t0, v * a, (len || 1.4) * dl));
+}
+function pluck(ac, out, f, t0, v, len) { // modern synth pluck: bright saw closing quickly to a soft tone
+  const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain(); len = len || 0.45;
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0); lp.type = 'lowpass'; lp.Q.value = 3;
+  lp.frequency.setValueAtTime(5000, t0); lp.frequency.exponentialRampToValueAtTime(500, t0 + len * 0.6);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  o.connect(lp).connect(g).connect(out); o.start(t0); o.stop(t0 + len + 0.05);
+}
+function echo(ac, out, time, fb) { // gentle repeat, softened a little each time
+  const d = ac.createDelay(1), f = ac.createGain(), lp = ac.createBiquadFilter(), inp = ac.createGain();
+  d.delayTime.value = time; f.gain.value = fb; lp.type = 'lowpass'; lp.frequency.value = 2600;
+  inp.connect(out); inp.connect(d); d.connect(lp).connect(f).connect(d); lp.connect(out); return inp;
+}
+function pad(ac, out, steps, t0, v, len) { // warm chord: two slightly detuned saws per note, slow swell
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.connect(out);
+  steps.forEach(st => [-7, 7].forEach(cents => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = nt(st); o.detune.value = cents;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.15); g.gain.setValueAtTime(v, t0 + len * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+    o.connect(g).connect(lp); o.start(t0); o.stop(t0 + len + 0.05);
+  }));
+}
+function whoosh(ac, out, t0, len, v) { // airy rising swell
+  const n = Math.floor(ac.sampleRate * len), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = b;
+  bp.type = 'bandpass'; bp.Q.value = 1.5; bp.frequency.setValueAtTime(700, t0); bp.frequency.exponentialRampToValueAtTime(7000, t0 + len);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  src.connect(bp).connect(g).connect(out); src.start(t0);
+}
+const WIN_STYLES = {
+  arcade: { star: (ac, t, k) => starBlip(ac, t, [7, 12, 16][k - 1]),
+            chime: (ac, t, stars) => stars === 3 ? JINGLES.winChimeBig(ac, t) : JINGLES.winChime(ac, t) },
+  // 1) Glass bells: clear bell tones in a soft room
+  glass: {
+    star: (ac, t, k) => bell(ac, bus(ac, 1, 0.35), nt([12, 16, 19][k - 1]), t, 0.16, 1.4),
+    chime: (ac, t, stars) => {
+      const perfect = stars === 3, out = bus(ac, 1, 0.45, 2.2);
+      (perfect ? [19, 24, 28, 31, 36, 40, 43] : [19, 24, 28, 31]).forEach((st, k) => bell(ac, out, nt(st), t + k * 0.075, 0.12, perfect ? 2.2 : 1.6));
+      if (perfect) [43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), t + 0.65 + k * 0.12, 0.04, 1.2));
+    } },
+  // 2) Synth pluck: modern pop pluck with an echo, ending on a warm chord
+  pluck: {
+    star: (ac, t, k) => { const out = echo(ac, bus(ac, 1, 0.2), 0.16, 0.28); pluck(ac, out, nt([7, 12, 16][k - 1]), t, 0.16); note(ac, out, 'sine', nt([7, 12, 16][k - 1] - 12), t, 0.12, 0.3); },
+    chime: (ac, t, stars) => {
+      const perfect = stars === 3, out = echo(ac, bus(ac, 1, 0.25), 0.18, 0.3);
+      (perfect ? [12, 16, 19, 24, 19, 24, 28, 31] : [12, 16, 19, 24]).forEach((st, k) => pluck(ac, out, nt(st), t + k * 0.09, 0.13, 0.4));
+      const tp = t + (perfect ? 8 : 4) * 0.09;
+      pad(ac, out, perfect ? [0, 4, 7, 12, 16] : [0, 4, 7, 12], tp, perfect ? 0.03 : 0.025, perfect ? 1.4 : 1.0);
+      note(ac, out, 'sine', nt(-12), tp, 0.18, perfect ? 1.2 : 0.8);
+    } },
+  // 3) Sparkle pop: bubbly pops, an airy whoosh and a shimmering chord
+  sparkle: {
+    star: (ac, t, k) => { const out = bus(ac, 1.9, 0.3); const f = nt([7, 12, 16][k - 1]); note(ac, out, 'sine', f * 0.5, t, 0.3, 0.14, f * 1.5); note(ac, out, 'sine', f * 2, t + 0.05, 0.08, 0.25); },
+    chime: (ac, t, stars) => {
+      if (stars === 1) return sparkleTryAgain(ac, t);
+      const perfect = stars === 3, out = bus(ac, 1.9, 0.45, 2.0);
+      whoosh(ac, out, t, perfect ? 0.6 : 0.4, 0.18);
+      const tc = t + (perfect ? 0.5 : 0.32);
+      (perfect ? [12, 16, 19, 24, 28] : [12, 16, 19, 24]).forEach(st => [-6, 6].forEach(c => {
+        const o = ac.createOscillator(), g = ac.createGain(), tr = ac.createOscillator(), tg = ac.createGain();
+        o.type = 'sine'; o.frequency.value = nt(st); o.detune.value = c; tr.frequency.value = 6; tg.gain.value = 0.02; tr.connect(tg).connect(g.gain);
+        g.gain.setValueAtTime(0.0001, tc); g.gain.exponentialRampToValueAtTime(0.045, tc + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, tc + (perfect ? 1.6 : 1.1));
+        o.connect(g).connect(out); o.start(tc); o.stop(tc + 1.7); tr.start(tc); tr.stop(tc + 1.7);
+      }));
+      if (perfect) [36, 43, 40, 48, 45, 52, 43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), tc + 0.08 + k * 0.07, 0.05, 0.18));
+    } },
+};
+// 1 star: a softer "try again" chime in the Sparkle pop sound. A small dip down and a lift back up that
+// doesn't quite resolve (you can do better), quieter, with no big whoosh or glitter.
+function sparkleTryAgain(ac, t) {
+  const out = bus(ac, 2.6, 0.35, 1.6);
+  whoosh(ac, out, t, 0.22, 0.06);
+  [[12, 0.12, 0.5], [7, 0.32, 0.5], [9, 0.56, 0.9]].forEach(([st, dt, len]) => [-5, 5].forEach(c => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = nt(st); o.detune.value = c;
+    g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.035, t + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + len);
+    o.connect(g).connect(out); o.start(t + dt); o.stop(t + dt + len + 0.05);
+  }));
+  note(ac, out, 'sine', nt(21), t + 0.6, 0.02, 0.5); // a faint glint of hope on the last note
+}
+// ---- Losing sound candidates (out of moves / time). The current arcade one stays until one is picked.
+const LOSE_STYLE = 'arcade';
+function brass(ac, out, f, t0, len, v, vib) { // muted brass: a saw whose filter opens and closes like a plunger mute
+  const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
+  lp.type = 'lowpass'; lp.Q.value = 6; lp.frequency.setValueAtTime(350, t0); lp.frequency.exponentialRampToValueAtTime(1500, t0 + 0.08); lp.frequency.exponentialRampToValueAtTime(500, t0 + len);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.04); g.gain.setValueAtTime(v, t0 + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.5; lg.gain.value = f * 0.025; l.connect(lg).connect(o.frequency); l.start(t0 + 0.25); l.stop(t0 + len); }
+  o.connect(lp).connect(g).connect(out); o.start(t0); o.stop(t0 + len + 0.05);
+}
+const LOSE_STYLES = {
+  // 1) Sad trombone: a playful "wah, wah, wah, waaah"
+  trombone(ac, t) {
+    const out = bus(ac, 2.4, 0.25, 1.2);
+    [[-14, 0, 0.32], [-15, 0.36, 0.32], [-16, 0.72, 0.32], [-17, 1.08, 1.1, true]].forEach(([st, dt, len, vib]) => brass(ac, out, nt(st), t + dt, len, 0.09, vib));
+  },
+  // 2) So close!: a rising run that stops one note short, then a bright "ding-ding" to cheer you on
+  nearmiss(ac, t) {
+    const out = echo(ac, bus(ac, 1.8, 0.3), 0.15, 0.2);
+    [0, 4, 7, 11].forEach((st, k) => pluck(ac, out, nt(st), t + k * 0.11, 0.12, 0.35));
+    note(ac, out, 'sine', nt(11), t + 0.44, 0.1, 0.25, nt(8));                  // ...slides down: not quite
+    [[24, 0.85], [28, 1.0]].forEach(([st, dt]) => bell(ac, out, nt(st), t + dt, 0.1, 1.0)); // ding-ding!
+  },
+  // 3) Rewind: a tape-rewind swoosh backwards, then a bouncy "ba-dum!" (ready? go again)
+  rewind(ac, t) {
+    const out = bus(ac, 2.0, 0.2);
+    const n = Math.floor(ac.sampleRate * 0.55), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (0.5 + 0.5 * Math.sin(i / ac.sampleRate * 2 * Math.PI * (30 + 60 * i / n)));
+    const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = b;
+    bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.setValueAtTime(3500, t); bp.frequency.exponentialRampToValueAtTime(400, t + 0.55);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    src.connect(bp).connect(g).connect(out); src.start(t);
+    note(ac, out, 'triangle', nt(12), t, 0.07, 0.5, nt(-12));                    // the pitch spinning backwards
+    note(ac, out, 'sine', nt(-5), t + 0.7, 0.3, 0.16, nt(2));                    // ba-
+    note(ac, out, 'sine', nt(2), t + 0.88, 0.3, 0.22, nt(9));                    // -dum!
+    note(ac, out, 'triangle', nt(21), t + 0.9, 0.06, 0.3);
+  },
+};
+function winSound(kind, arg, style) {
+  if (!S.sound) return;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    WIN_STYLES[style || WIN_STYLE][kind](actx, actx.currentTime + 0.01, arg); } catch (e) {}
+}
+// Paper rip: a chunky paper "brrrt" through the teeth, a soft thunk, and a bright chime.
+function paperShred(ac, t, step, out) {
   // 1) the rip: noise chopped by the cutter teeth (~70 per second), swept from bright to dull
   const len = 0.2, sr = ac.sampleRate, buf = ac.createBuffer(1, Math.floor(sr * len), sr), d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) {
@@ -469,6 +726,8 @@ function sfx(kind) {
     if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;
     if (kind === 'shred') { shredSound(actx, t, comboStep()); return; }
+    if (kind === 'lose' && LOSE_STYLE !== 'arcade') { LOSE_STYLES[LOSE_STYLE](actx, t); return; }
+    if (JINGLES[kind]) { JINGLES[kind](actx, t); return; }
     if (kind === 'blast') {
       const len = 0.5, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (0.6 + 0.4 * Math.sin(i / 40));
@@ -478,7 +737,7 @@ function sfx(kind) {
       src.connect(f).connect(g).connect(actx.destination); src.start(t);
     } else {
       const o = actx.createOscillator(), g = actx.createGain();
-      const map = { star1: [660, 0.25, 0.14], star2: [830, 0.25, 0.14], star3: [990, 0.4, 0.16], tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
+      const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
       const [fr, dur, vol] = map[kind];
       o.type = kind === 'win' || kind === 'coin' || kind === 'magic' || kind.startsWith('star') ? 'triangle' : 'square'; o.frequency.setValueAtTime(fr, t);
       if (kind === 'win' || kind === 'magic' || kind === 'star3') o.frequency.exponentialRampToValueAtTime(fr * 2, t + dur);
@@ -569,7 +828,7 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function rebuildCtx() { const f = ctx && ctx.field, fr = ctx && ctx.frame; ctx = CS.makeCtx(W); ctx.field = f; ctx.frame = fr; W.__ctx = ctx; }
 
 function startCampaign(i, resume) {
-  mode = 'campaign'; li = i; U = null;
+  mode = 'campaign'; li = i; U = null; rescues = 0;
   W = clone(LEVELS[i]); ctx = null; rebuildCtx();
   const cur = resume && S.current && S.current.id === W.id ? S.current : null;
   pos = cur ? cur.pos.slice() : ctx.blocks.map(b => b.y * W.w + b.x);
@@ -596,7 +855,7 @@ setInterval(() => {
   timeLeft--; updateHud();
   if (mode === 'campaign' && timeLeft % 5 === 0) saveCurrent();
   if (timeLeft <= 0) {
-    if (mode === 'unstoppable') endRun(); else lose("Time's up", 'The clock beat you this round.');
+    if (mode === 'unstoppable') unstoppableTimeUp(); else lose("Time's up", 'Welp! The clock got you.');
   }
 }, 1000);
 
@@ -903,10 +1162,10 @@ function usePower(k, i) {
 function checkEnd() {
   if (over) return;
   if (!pos.some(p => p >= 0)) return mode === 'unstoppable' ? unstoppableClear() : win();
-  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
+  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Welp! So close.');
 }
 function win() {
-  over = true; clearHint();
+  over = true; clearHint(); setTimeout(() => sfx('levelDone'), 250);
   const id = W.id, first = !S.stars[id], extra = moves - W.opt;
   const s = extra <= 0 ? 3 : extra <= ({ easy: 3, medium: 2 }[W.tier] || 1) ? 2 : 1;
   const prev = S.stars[id] || 0;
@@ -944,20 +1203,52 @@ function win() {
     ${!finished && next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
     ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
-  for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), (0.25 + (k - 1) * 0.38 + 0.42) * 1000);
+  const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
+  for (let k = 1; k <= s; k++) setTimeout(() => winSound('star', k), landAt(k));
+  setTimeout(() => winSound('chime', s), landAt(s) + 380);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
   $('replayBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
 }
+// Out of moves or time: a menu of ways to keep going for coins. The board stays exactly as it was.
+// Each rescue on the same level (or Unstoppable run) costs 50% more than the last.
+const RESCUE = { moves: [[3, 20], [5, 30], [10, 50]], time: [[15, 20], [30, 35], [60, 60]] };
+let rescues = 0;
+const rescueOptions = kind => RESCUE[kind].map(([amt, c]) => [amt, Math.round(c * (1 + 0.5 * rescues) / 5) * 5]);
+function rescueHtml(kind) {
+  const opts = rescueOptions(kind), any = opts.some(([, c]) => S.coins >= c);
+  return `<div class="rescue-box${any ? '' : ' broke'}"><div class="rescue-head">
+      <span class="keep">${any ? 'Keep going?' : 'Out of coins'}</span><span class="coins"><i class="coin"></i>${S.coins}</span></div>
+    ${any ? '' : '<p class="broke-note">Beat levels to earn more coins.</p>'}
+    <div class="rescue">${opts.map(([amt, cost], k) => {
+      const ok = S.coins >= cost;
+      return `<button class="ropt" data-k="${k}"${ok ? '' : ' disabled'}><b>+${amt}</b><span>${kind === 'moves' ? 'moves' : 'seconds'}</span>
+        <em><i class="coin"></i>${cost}</em>${ok ? '' : `<small>need ${cost - S.coins} more</small>`}</button>`;
+    }).join('')}</div></div>`;
+}
+function wireRescue(kind, onBuy) {
+  $('card').querySelectorAll('.ropt').forEach(b => b.onclick = () => {
+    const [amt, cost] = rescueOptions(kind)[+b.dataset.k];
+    if (S.coins < cost) return;
+    rescues++; setCoins(S.coins - cost, true); hideOverlay(); onBuy(amt); sfx('magic');
+    toast(kind === 'moves' ? `+${amt} moves. You've got this!` : `+${amt} seconds. Go go go!`);
+  });
+}
 function lose(title, msg) {
-  over = true; sfx('fail'); clearHint(); S.current = null; save();
-  const outOfTime = title === "Time's up", canBuy = (used.extra || 0) < PU.extra.limit && S.coins >= PU.extra.cost;
-  showCard(`<h3>${title}</h3><p>${msg}</p>
-    ${canBuy ? `<button class="btn" id="buyMore"><span style="display:inline-flex;align-items:center;gap:8px">${outOfTime ? '+20 seconds' : '+5 moves'} for <i class="coin"></i>${PU.extra.cost}</span></button>` : ''}
-    <button class="btn ${canBuy ? 'alt' : ''}" id="retryBtn">Try again</button><button class="btn alt" id="menuBtn">Menu</button>`);
+  over = true; sfx('lose'); clearHint(); S.current = null; save();
+  const kind = title === "Time's up" ? 'time' : 'moves', any = rescueOptions(kind).some(([, c]) => S.coins >= c);
+  showCard(`<h3>${title}</h3><p>${msg}</p>${rescueHtml(kind)}
+    <button class="btn${any ? ' alt' : ''}" id="retryBtn">Try again</button><button class="btn alt" id="menuBtn">Menu</button>`);
   $('retryBtn').onclick = () => startCampaign(li, false); $('menuBtn').onclick = renderWelcome;
-  if (canBuy) $('buyMore').onclick = () => { over = false; hideOverlay(); spend('extra'); if (outOfTime) timeLeft += 20; else extraMoves += 5; sfx('magic'); updateHud(); saveCurrent(); };
+  wireRescue(kind, amt => { over = false; if (kind === 'time') timeLeft += amt; else extraMoves += amt; updateHud(); saveCurrent(); });
+}
+function unstoppableTimeUp() {
+  over = true; sfx('lose'); clearHint();
+  showCard(`<h3>Time's up</h3><p>Welp! The clock got you on stage ${U.stage}.</p>${rescueHtml('time')}
+    <button class="btn alt" id="endBtn">End run</button>`);
+  $('endBtn').onclick = () => endRun(false);
+  wireRescue('time', amt => { over = false; timeLeft += amt; updateHud(); });
 }
 
 // ---------- Unstoppable ----------
@@ -1036,7 +1327,7 @@ function easyBoard() {
 }
 function startUnstoppable() {
   mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true, hardAt: 20, good: 0, band: 'warm', boardStart: 90 };
-  timeLeft = 90; over = false; busy = false; armed = null; hist = [];
+  timeLeft = 90; over = false; busy = false; armed = null; hist = []; rescues = 0;
   show('play');
   $('lvName').textContent = 'Stage 1'; $('lvTier').textContent = 'Unstoppable'; $('play').style.setProperty('--tc', TIER.unstoppable.color);
   $('movesLabel').textContent = 'Cleared';
@@ -1072,7 +1363,7 @@ function unstoppableClear() {
   if (U.boardStart - timeLeft <= bonus) U.good++;
   if (U.stage < U.hardAt) U.hardAt = Math.max(U.stage + 1, 20 - Math.min(10, U.good)); // locked once the next board is hard
   U.cleared++; U.earned += coins; timeLeft += bonus;
-  setCoins(S.coins + coins, true); sfx('coin');
+  setCoins(S.coins + coins, true); sfx('boardClear');
   flash(`+${bonus}s`);
   U.stage++;
   if (U.stage - 1 > S.best) { S.best = U.stage - 1; save(); }
@@ -1086,7 +1377,7 @@ function unstoppableClear() {
   }, 650);
 }
 function endRun(quit) {
-  over = true; sfx('fail');
+  over = true;
   const reached = U.stage, best = Math.max(S.best, U.cleared);
   S.best = best; S.bestCleared = Math.max(S.bestCleared || 0, U.cleared); save();
   showCard(`<h3>${quit ? 'Run over' : "Time's up"}</h3><p>You cleared ${U.cleared} board${U.cleared === 1 ? '' : 's'} and reached stage ${reached}.<br>Best run: ${best} boards.</p>
@@ -1166,6 +1457,8 @@ function showSettings() {
   const code = btoa(unescape(encodeURIComponent(JSON.stringify({ ...S, current: S.current }))));
   showCard(`<h3>Settings</h3>
     <button class="btn alt" id="sndBtn">Sound: ${S.sound ? 'on' : 'off'}</button>
+    <p style="margin:14px 0 0">Shred sound (tap to hear it)</p>
+    <div class="sndpick">${Object.entries(SHRED_SOUNDS).map(([k, name]) => `<button class="btn alt${(S.shredStyle || 'arcade') === k ? ' on' : ''}" data-snd="${k}">${name}</button>`).join('')}</div>
     <button class="btn alt" id="rulesBtn">How to play</button>
     <p style="margin:16px 0 6px">Your progress saves on this phone automatically. Copy this backup code somewhere safe to restore it later.</p>
     <textarea id="saveCode" readonly>${code}</textarea>
@@ -1173,6 +1466,14 @@ function showSettings() {
     <button class="btn danger" id="resetBtn">Reset all progress</button>
     <button class="btn" id="closeBtn">Done</button>`);
   $('sndBtn').onclick = () => { S.sound = !S.sound; save(); $('sndBtn').textContent = 'Sound: ' + (S.sound ? 'on' : 'off'); };
+  $('card').querySelectorAll('[data-snd]').forEach(b => b.onclick = () => {
+    S.shredStyle = b.dataset.snd; S.sndPicked = true; save();
+    $('card').querySelectorAll('[data-snd]').forEach(x => x.classList.toggle('on', x === b));
+    try { // play a short streak of three so the climbing chime is heard too
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+      const t = actx.currentTime + 0.05; [0, 1, 2].forEach(k => shredSound(actx, t + k * 0.32, k));
+    } catch (e) {}
+  });
   $('rulesBtn').onclick = showRules;
   $('closeBtn').onclick = () => { hideOverlay(); renderWelcome(); };
   $('copyBtn').onclick = () => {
@@ -1240,6 +1541,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step) => shredSound(ac, t, step) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
