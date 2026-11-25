@@ -843,6 +843,7 @@ let actx = null;
 // streak that makes you want the next one. A short pause starts the scale over.
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
 let comboN = 0, comboT = 0;
+const resetCombo = () => { comboN = 0; comboT = 0; }; // every new board or level starts the scale at the bottom
 function comboStep() {
   const now = performance.now();
   comboN = now - comboT < 2500 ? Math.min(comboN + 1, SCALE.length - 1) : 0;
@@ -1107,6 +1108,39 @@ const LOSE_STYLES = {
     note(ac, out, 'triangle', nt(21), t + 0.9, 0.06, 0.3);
   },
 };
+// ---- New-board transition chime in Unstoppable, shaped by how hard the board is (d: 0 easy .. 1 superhard).
+// Candidates to compare; none plays until one is picked.
+const TRANSITION_STYLE = null;
+const TRANSITIONS = {
+  // A) Rising bell: one sparkly bell, higher and brighter (more shimmer) for harder boards
+  bell(ac, t, d) {
+    const out = bus(ac, 1.6, 0.4, 1.6), st = Math.round(7 + d * 12);
+    bell(ac, out, nt(st), t, 0.12, 1.2);
+    if (d > 0.4) note(ac, out, 'sine', nt(st + 12), t + 0.05, 0.04 + d * 0.04, 0.6);
+    if (d > 0.75) note(ac, out, 'sine', nt(st + 19), t + 0.1, 0.04, 0.5);
+  },
+  // B) Level-up run: quick rising Sparkle notes, more of them for harder boards (2 to 5)
+  run(ac, t, d) {
+    const out = bus(ac, 3.4, 0.35, 1.2), steps = [0, 4, 7, 12, 16].slice(0, 2 + Math.round(d * 3)), base = Math.round(d * 5);
+    steps.forEach((st, k) => [-6, 6].forEach(c => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = t + k * 0.075; o.type = 'sine'; o.frequency.value = nt(st + base); o.detune.value = c;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+      o.connect(g).connect(out); o.start(t0); o.stop(t0 + 0.4);
+    }));
+  },
+  // C) Drumroll swell: an airy swell into a soft drum hit; deeper and more suspenseful for harder boards
+  drum(ac, t, d) {
+    const out = bus(ac, 1.1, 0.3, 1.4), hit = t + 0.25 + d * 0.15;
+    whoosh(ac, out, t, hit - t, 0.05 + d * 0.06);
+    note(ac, out, 'sine', 110 - d * 45, hit, 0.35 + d * 0.15, 0.35, 45);           // the drum
+    const chord = d > 0.6 ? [0, 5, 7] : [0, 4, 7];                                  // suspended (tense) when hard
+    chord.forEach(st => note(ac, out, 'triangle', nt(st), hit, 0.035, 0.5 + d * 0.3));
+  },
+};
+function transitionSound(d, style) {
+  style = style || TRANSITION_STYLE; if (!style || !S.sound) return;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); TRANSITIONS[style](actx, actx.currentTime + 0.02, d); } catch (e) {}
+}
 function winSound(kind, arg, style) {
   if (!S.sound) return;
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
@@ -1260,7 +1294,7 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function rebuildCtx() { const f = ctx && ctx.field, fr = ctx && ctx.frame; ctx = CS.makeCtx(W); ctx.field = f; ctx.frame = fr; W.__ctx = ctx; }
 
 function startCampaign(i, resume) {
-  mode = 'campaign'; li = i; U = null; rescues = 0;
+  mode = 'campaign'; li = i; U = null; rescues = 0; resetCombo();
   W = clone(LEVELS[i]); ctx = null; rebuildCtx();
   const cur = resume && S.current && S.current.id === W.id ? S.current : null;
   pos = cur ? cur.pos.slice() : ctx.blocks.map(b => b.y * W.w + b.x);
@@ -1728,7 +1762,7 @@ function requestBoard(stage, cb) {
   function finish(res) {
     if (done) return;
     if (res === null) return here();
-    done = true; clearTimeout(timer); res.band = band.band; cb(res);
+    done = true; clearTimeout(timer); res.band = band.band; res.d = band.d; cb(res);
   }
   function ask() {
     const w = getWorker();
@@ -1777,6 +1811,8 @@ function loadUnstoppableBoard(given) {
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
   $('lvName').textContent = 'Stage ' + U.stage;
   U.band = given ? U.band : (res.band || 'warm'); // kept to ourselves: the player only ever sees "Stage N"
+  resetCombo();
+  if (U.stage > 1) transitionSound(given ? 0 : (res.d || 0));
   U.boardStart = timeLeft;
   buildBoard(); updateHud();
   if (given) flash('Easy one!');
@@ -1973,7 +2009,7 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg), transition: (st, ac, t, d) => TRANSITIONS[st](ac, t, d), combo: () => comboN, loseStyle: (st, ac, t) => st === 'arcade' ? JINGLES.lose(ac, t) : LOSE_STYLES[st](ac, t) };
 })();
 </script>
 
