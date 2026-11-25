@@ -777,7 +777,7 @@ function prize(li) {
 const KEY = 'colorshred:save2';
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, shredStyle: 'paper', seenRules: false, best: 0, bestCleared: 0, current: null }; }
+function freshSave() { return { v: 2, coins: 150, stars: {}, equipped: null, sound: true, shredStyle: 'arcade', sndPicked: false, seenRules: false, best: 0, bestCleared: 0, current: null }; }
 let S = freshSave();
 (function loadSave() {
   try {
@@ -791,6 +791,7 @@ let S = freshSave();
     S.coins += Object.values(S.stars).reduce((a, n) => a + 20 + n * 5, 0);
   } catch (e) { S = freshSave(); }
 })();
+if (!S.sndPicked) S.shredStyle = 'arcade'; // the default sound is Arcade bling unless someone picked another
 function save() { lsSet(KEY, JSON.stringify(S)); }
 const idx = {}; LEVELS.forEach((l, i) => { idx[l.id] = i; });
 const cleared = i => !!S.stars[LEVELS[i].id];
@@ -828,7 +829,7 @@ function comboStep() {
 const SHRED_SOUNDS = { paper: 'Paper rip', bubble: 'Bubble pop', arcade: 'Arcade bling' };
 function shredSound(ac, t, step, style) {
   const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
-  style = style || S.shredStyle || 'paper';
+  style = style || S.shredStyle || 'arcade';
   if (style === 'bubble') return bubbleShred(ac, t, step, out);
   if (style === 'arcade') return arcadeShred(ac, t, step, out);
   paperShred(ac, t, step, out);
@@ -865,6 +866,51 @@ function arcadeShred(ac, t, step, out) {
   note(ac, lp, 'square', f0 * 2, tc + 0.15, 0.06, 0.26);              // final ring
   note(ac, out, 'triangle', f0 * 2, tc + 0.15, 0.1, 0.3);             // soften the square with a triangle twin
   if (step >= 4) note(ac, out, 'triangle', f0 * 3, tc + 0.22, 0.06, 0.2);
+}
+// Arcade jingles for winning (always arcade style). Notes are in Hz, built from C5.
+const C5 = 523.25, nt = st => C5 * Math.pow(2, st / 12);
+function jingleOut(ac) {
+  const out = ac.createGain(); out.gain.value = 2.0; out.connect(ac.destination);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000; lp.connect(out);
+  return { out, lp };
+}
+const JINGLES = {
+  // level complete: a bouncy rising run that lands on a bright held chord
+  levelDone(ac, t) {
+    const { out, lp } = jingleOut(ac);
+    [0, 4, 7, 12, 7, 12, 16].forEach((st, k) => note(ac, lp, 'square', nt(st), t + k * 0.065, 0.05, 0.09));
+    [12, 16, 19].forEach(st => note(ac, out, 'triangle', nt(st), t + 0.47, 0.09, 0.5));
+    note(ac, lp, 'square', nt(24), t + 0.47, 0.035, 0.45);
+  },
+  // each star: a coin-like two-step blip, a little higher for every star
+  star1(ac, t) { starBlip(ac, t, 7); },
+  star2(ac, t) { starBlip(ac, t, 12); },
+  star3(ac, t) { starBlip(ac, t, 16); },
+  // after the last star: a rolled sparkly chord (bigger for a perfect 3 stars)
+  winChime(ac, t) { winRoll(ac, t, [12, 16, 19, 24], 0.55); },
+  winChimeBig(ac, t) {
+    winRoll(ac, t, [12, 16, 19, 24, 28, 31, 36], 0.9);
+    const { out } = jingleOut(ac);
+    [36, 40, 43].forEach((st, k) => note(ac, out, 'sine', nt(st), t + 0.45 + k * 0.09, 0.05, 0.35)); // twinkles on top
+  },
+  // Unstoppable board cleared: a short three-note "bling"
+  boardClear(ac, t) {
+    const { lp } = jingleOut(ac);
+    [7, 12, 16].forEach((st, k) => note(ac, lp, 'square', nt(st), t + 0.18 + k * 0.06, 0.045, 0.12));
+  },
+};
+function starBlip(ac, t, st) {
+  const { out, lp } = jingleOut(ac);
+  note(ac, lp, 'square', nt(st), t, 0.05, 0.07);
+  note(ac, lp, 'square', nt(st + 7), t + 0.06, 0.05, 0.22);
+  note(ac, out, 'triangle', nt(st + 7), t + 0.06, 0.08, 0.3);
+}
+function winRoll(ac, t, steps, ring) {
+  const { out, lp } = jingleOut(ac);
+  steps.forEach((st, k) => {
+    note(ac, out, 'triangle', nt(st), t + k * 0.05, 0.08, ring);
+    note(ac, lp, 'square', nt(st), t + k * 0.05, 0.025, 0.12);
+  });
 }
 // Paper rip: a chunky paper "brrrt" through the teeth, a soft thunk, and a bright chime.
 function paperShred(ac, t, step, out) {
@@ -912,6 +958,7 @@ function sfx(kind) {
     if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;
     if (kind === 'shred') { shredSound(actx, t, comboStep()); return; }
+    if (JINGLES[kind]) { JINGLES[kind](actx, t); return; }
     if (kind === 'blast') {
       const len = 0.5, buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (0.6 + 0.4 * Math.sin(i / 40));
@@ -921,7 +968,7 @@ function sfx(kind) {
       src.connect(f).connect(g).connect(actx.destination); src.start(t);
     } else {
       const o = actx.createOscillator(), g = actx.createGain();
-      const map = { star1: [660, 0.25, 0.14], star2: [830, 0.25, 0.14], star3: [990, 0.4, 0.16], tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
+      const map = { tick: [520, 0.03, 0.05], bump: [140, 0.06, 0.12], win: [660, 0.5, 0.15], fail: [180, 0.5, 0.15], coin: [980, 0.15, 0.1], magic: [440, 0.35, 0.12] };
       const [fr, dur, vol] = map[kind];
       o.type = kind === 'win' || kind === 'coin' || kind === 'magic' || kind.startsWith('star') ? 'triangle' : 'square'; o.frequency.setValueAtTime(fr, t);
       if (kind === 'win' || kind === 'magic' || kind === 'star3') o.frequency.exponentialRampToValueAtTime(fr * 2, t + dur);
@@ -1349,7 +1396,7 @@ function checkEnd() {
   if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
 }
 function win() {
-  over = true; clearHint();
+  over = true; clearHint(); setTimeout(() => sfx('levelDone'), 250);
   const id = W.id, first = !S.stars[id], extra = moves - W.opt;
   const s = extra <= 0 ? 3 : extra <= ({ easy: 3, medium: 2 }[W.tier] || 1) ? 2 : 1;
   const prev = S.stars[id] || 0;
@@ -1387,7 +1434,9 @@ function win() {
     ${!finished && next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
     ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
-  for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), (0.25 + (k - 1) * 0.38 + 0.42) * 1000);
+  const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
+  for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), landAt(k));
+  setTimeout(() => sfx(perfect ? 'winChimeBig' : 'winChime'), landAt(s) + 380);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
@@ -1515,7 +1564,7 @@ function unstoppableClear() {
   if (U.boardStart - timeLeft <= bonus) U.good++;
   if (U.stage < U.hardAt) U.hardAt = Math.max(U.stage + 1, 20 - Math.min(10, U.good)); // locked once the next board is hard
   U.cleared++; U.earned += coins; timeLeft += bonus;
-  setCoins(S.coins + coins, true); sfx('coin');
+  setCoins(S.coins + coins, true); sfx('boardClear');
   flash(`+${bonus}s`);
   U.stage++;
   if (U.stage - 1 > S.best) { S.best = U.stage - 1; save(); }
@@ -1610,7 +1659,7 @@ function showSettings() {
   showCard(`<h3>Settings</h3>
     <button class="btn alt" id="sndBtn">Sound: ${S.sound ? 'on' : 'off'}</button>
     <p style="margin:14px 0 0">Shred sound (tap to hear it)</p>
-    <div class="sndpick">${Object.entries(SHRED_SOUNDS).map(([k, name]) => `<button class="btn alt${(S.shredStyle || 'paper') === k ? ' on' : ''}" data-snd="${k}">${name}</button>`).join('')}</div>
+    <div class="sndpick">${Object.entries(SHRED_SOUNDS).map(([k, name]) => `<button class="btn alt${(S.shredStyle || 'arcade') === k ? ' on' : ''}" data-snd="${k}">${name}</button>`).join('')}</div>
     <button class="btn alt" id="rulesBtn">How to play</button>
     <p style="margin:16px 0 6px">Your progress saves on this phone automatically. Copy this backup code somewhere safe to restore it later.</p>
     <textarea id="saveCode" readonly>${code}</textarea>
@@ -1619,7 +1668,7 @@ function showSettings() {
     <button class="btn" id="closeBtn">Done</button>`);
   $('sndBtn').onclick = () => { S.sound = !S.sound; save(); $('sndBtn').textContent = 'Sound: ' + (S.sound ? 'on' : 'off'); };
   $('card').querySelectorAll('[data-snd]').forEach(b => b.onclick = () => {
-    S.shredStyle = b.dataset.snd; save();
+    S.shredStyle = b.dataset.snd; S.sndPicked = true; save();
     $('card').querySelectorAll('[data-snd]').forEach(x => x.classList.toggle('on', x === b));
     try { // play a short streak of three so the climbing chime is heard too
       actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
@@ -1693,7 +1742,7 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t) };
 })();
 </script>
 
