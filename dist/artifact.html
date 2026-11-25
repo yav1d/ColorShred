@@ -698,10 +698,11 @@ function makeLevel(T) {
 }
 
 
-// Unstoppable: difficulty ramps with the stage, with some randomness so runs feel different.
-function unstoppableTier(stage) {
-  let d = Math.min(1, (stage - 1) / 25) + (rnd() - 0.5) * 0.2;
-  d = Math.max(0, Math.min(1, d));
+// Unstoppable: a board recipe for difficulty d (0 = easiest, 1 = superhard). The game decides d from the stage;
+// a little randomness keeps runs different, kept inside [lo, hi] so a warm-up board never turns hard by chance.
+function unstoppableTier(d0, lo, hi) {
+  lo = lo == null ? 0 : lo; hi = hi == null ? 1 : hi;
+  let d = Math.max(lo, Math.min(hi, d0 + (rnd() - 0.5) * 0.2));
   const r = x => Math.round(x);
   return { w: [5 + r(d * 2), 5 + r(d * 2)], h: [6 + r(d * 3), 6 + r(d * 3)], colors: [3 + r(d * 3), 3 + r(d * 4)],
     walls: [0, r(d * 3)], shapes: Array.from({ length: 6 + r(d * 11) }, (_, i) => i), axisP: 0.3 * d, iceP: 0.1 * d,
@@ -1070,6 +1071,7 @@ function blockAt(ev) {
   return CS.occupancy(ctx, pos)[cy * W.w + cx];
 }
 function onDown(ev) {
+  if (drag && (drag.field !== ctx.field || ev.pointerId !== drag.id)) abandonDrag(); // a lost finger-up must never freeze the board
   if (over || busy || drag) return;
   const i = blockAt(ev);
   if (armed) { if (i >= 0) usePower(armed, i); return; }
@@ -1078,7 +1080,7 @@ function onDown(ev) {
   if (CS.frozen(ctx, pos, i)) { shake(i); sfx('bump'); toast(`Frozen. Shred ${ctx.blocks[i].ice - CS.removedCount(pos)} more block(s) to thaw it, or use Thaw.`); return; }
   ev.preventDefault();
   ctx.field.setPointerCapture(ev.pointerId);
-  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i] };
+  drag = { i, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, start: pos[i], field: ctx.field };
   els[i].classList.add('grab');
   ctx.field.addEventListener('pointermove', onMove);
   ctx.field.addEventListener('pointerup', onUp);
@@ -1113,6 +1115,14 @@ function onMove(ev) {
     if (!ok) break;
   }
   if (moved) { place(i); sfx('tick'); }
+}
+// End a drag without a finger-up: keep the block where it is (counted as a move if it moved).
+function abandonDrag() {
+  if (!drag) return;
+  const f = drag.field;
+  if (f === ctx.field) { try { finishDrag(null); return; } catch (e) {} }
+  f.removeEventListener('pointermove', onMove); f.removeEventListener('pointerup', onUp); f.removeEventListener('pointercancel', onUp);
+  drag = null;
 }
 function onUp(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
@@ -1287,30 +1297,63 @@ function lose(title, msg) {
 }
 
 // ---------- Unstoppable ----------
+// Unstoppable boards are built in a background worker so play never stutters. iPhones can stop that worker
+// (screen locked, app switched, low memory), so every request has a deadline: if the worker goes quiet or
+// crashes, it is restarted once, and after that the board is built right here instead. A board always arrives.
 let worker = null, pending = {};
 function getWorker() {
   if (worker !== null) return worker;
   try {
     const src = $('src-engine').textContent + '\n' + $('src-gen').textContent + `
-self.onmessage = e => { const { stage, seed } = e.data;
-  for (let k = 0; k < 8; k++) { CSGen.setSeed(seed + k * 7919); const T = CSGen.unstoppableTier(stage); const r = CSGen.generate(T, { cap: 4000 });
+self.onmessage = e => { const { stage, seed, d, lo, hi } = e.data;
+  for (let k = 0; k < 8; k++) { CSGen.setSeed(seed + k * 7919); const T = CSGen.unstoppableTier(d, lo, hi); const r = CSGen.generate(T, { cap: 4000 });
     if (r.lvl) { postMessage({ stage, lvl: r.lvl, relocs: r.relocs }); return; } }
   postMessage({ stage, error: true }); };`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     worker.onmessage = e => { const cb = pending[e.data.stage]; delete pending[e.data.stage]; if (cb) cb(e.data); };
-    worker.onerror = () => { worker = false; };
+    worker.onerror = () => { killWorker(); };
   } catch (e) { worker = false; }
   return worker;
 }
+function killWorker() {
+  try { worker && worker.terminate(); } catch (e) {}
+  worker = false;
+  const ps = pending; pending = {};
+  Object.values(ps).forEach(cb => cb(null)); // null = "build it on this thread instead"
+}
+function buildHere(stage, seed, band) {
+  let r = { lvl: null };
+  for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(band.d, band.lo, band.hi), { cap: 4000 }); }
+  return r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true };
+}
+// Unstoppable difficulty: a warm-up from easy to medium until stage U.hardAt (10-20: earlier the better you play),
+// then hard boards that climb to superhard over about ten stages. Warm-up boards never turn hard.
+function stageBand(stage) {
+  const T = U.hardAt;
+  if (stage <= T) return { d: 0.5 * (stage - 1) / Math.max(1, T - 1), lo: 0, hi: 0.55, band: 'warm' };
+  const d = Math.min(1, 0.7 + 0.04 * (stage - T - 1));
+  return { d, lo: 0.65, hi: 1, band: d >= 0.9 ? 'superhard' : 'hard' };
+}
 function requestBoard(stage, cb) {
-  const seed = (Date.now() ^ (stage * 2654435761)) | 0;
-  const w = getWorker();
-  if (w) { pending[stage] = cb; w.postMessage({ stage, seed }); return; }
-  setTimeout(() => { // fallback: generate on the main thread
-    let r = { lvl: null };
-    for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(stage), { cap: 4000 }); }
-    cb(r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true });
-  }, 30);
+  const seed = (Date.now() ^ (stage * 2654435761)) | 0, band = stageBand(stage);
+  let done = false, retried = false, timer = null;
+  const here = () => setTimeout(() => finish(buildHere(stage, seed, band)), 30);
+  function finish(res) {
+    if (done) return;
+    if (res === null) return here();
+    done = true; clearTimeout(timer); res.band = band.band; cb(res);
+  }
+  function ask() {
+    const w = getWorker();
+    if (!w) return here();
+    pending[stage] = finish; w.postMessage({ stage, seed: seed + (retried ? 1 : 0), d: band.d, lo: band.lo, hi: band.hi });
+    timer = setTimeout(() => {
+      if (done) return;
+      if (!retried) { retried = true; try { worker.terminate(); } catch (e) {} worker = null; pending = {}; ask(); }
+      else { delete pending[stage]; here(); }
+    }, 8000);
+  }
+  ask();
 }
 function prefetch(stage) {
   U.next = null; U.fetching = true; const run = U;
@@ -1324,11 +1367,11 @@ function prefetch(stage) {
 // A quick, easy board (stage-1 difficulty), made on the spot when the clock is nearly out.
 function easyBoard() {
   let r = { lvl: null };
-  for (let k = 0; k < 20 && !r.lvl; k++) { CSGen.setSeed((Date.now() + k * 7919) | 0); r = CSGen.generate(CSGen.unstoppableTier(1), { cap: 4000 }); }
+  for (let k = 0; k < 20 && !r.lvl; k++) { CSGen.setSeed((Date.now() + k * 7919) | 0); r = CSGen.generate(CSGen.unstoppableTier(0, 0, 0.1), { cap: 4000 }); }
   return r.lvl ? { lvl: r.lvl, relocs: r.relocs } : null;
 }
 function startUnstoppable() {
-  mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true };
+  mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true, hardAt: 20, good: 0, band: 'warm', boardStart: 90 };
   timeLeft = 90; over = false; busy = false; armed = null; hist = [];
   show('play');
   $('lvName').textContent = 'Stage 1'; $('lvTier').textContent = 'Unstoppable'; $('play').style.setProperty('--tc', TIER.unstoppable.color);
@@ -1346,8 +1389,11 @@ function loadUnstoppableBoard(given) {
   ctx = null; rebuildCtx();
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
   $('lvName').textContent = 'Stage ' + U.stage;
+  U.band = given ? U.band : (res.band || 'warm'); // kept to ourselves: the player only ever sees "Stage N"
+  U.boardStart = timeLeft;
   buildBoard(); updateHud();
-  if (given) flash('Easy one!'); else if (U.stage > 1) flash('Stage ' + U.stage);
+  if (given) flash('Easy one!');
+  else if (U.stage > 1) flash('Stage ' + U.stage);
   // keep a regular board ready (an easy board doesn't use up the one already waiting)
   if (!U.next && !U.fetching) prefetch(U.stage + 1);
 }
@@ -1357,6 +1403,10 @@ function unstoppableClear() {
   const bonus = 10 + Math.min(20, relocs * 2 + Math.floor(Math.max(0, W.blocks.length - 10) / 3));
   const coins = 5 + Math.floor(U.stage / 2);
   const rescue = timeLeft < 12; // nearly out of time when solved: the next board is an easy one
+  // Playing well = solving a board faster than the time it gives back. Each such board brings hard boards one
+  // stage closer: the warm-up lasts until stage 20 at most and stage 10 at the least. Players are never told.
+  if (U.boardStart - timeLeft <= bonus) U.good++;
+  if (U.stage < U.hardAt) U.hardAt = Math.max(U.stage + 1, 20 - Math.min(10, U.good)); // locked once the next board is hard
   U.cleared++; U.earned += coins; timeLeft += bonus;
   setCoins(S.coins + coins, true); sfx('coin');
   flash(`+${bonus}s`);
@@ -1367,7 +1417,8 @@ function unstoppableClear() {
     busy = false;
     const easy = rescue && easyBoard();
     if (easy) loadUnstoppableBoard(easy);
-    else if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
+    else if (U.next) loadUnstoppableBoard();
+    else { U.waiting = true; showGenerating(); if (!U.fetching) prefetch(U.stage); } // nothing on the way: ask now
   }, 650);
 }
 function endRun(quit) {
@@ -1508,9 +1559,13 @@ $('undoBtn').onclick = undo;
 $('restartBtn').onclick = restart;
 $('hintBtn').onclick = hint;
 let rT = null;
-window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('play').hidden && W && ctx && ctx.field) { clearHint(); buildBoard(); updateHud(); } }, 120); });
+window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(function redo() {
+  if ($('play').hidden || !W || !ctx || !ctx.field) return;
+  if (drag || busy) { rT = setTimeout(redo, 200); return; } // never rebuild the board under a finger or mid-animation
+  clearHint(); buildBoard(); updateHud(); }, 120); });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrent(); });
+window.addEventListener('error', () => { try { drag = null; busy = false; if (U && U.waiting && !U.fetching) prefetch(U.stage); } catch (e) {} });
 applyTheme();
 renderWelcome();
 // Ask the phone to keep this game's saved data instead of clearing it when storage runs low
@@ -1521,6 +1576,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); } };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)) };
 })();
 </script>
