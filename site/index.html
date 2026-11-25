@@ -935,6 +935,88 @@ function winRoll(ac, t, steps, ring) {
     note(ac, lp, 'square', nt(st), t + k * 0.05, 0.025, 0.12);
   });
 }
+// ---- Star and win-chime sound styles (the result screen). One is used for everyone; candidates kept for comparing.
+const WIN_STYLE = 'arcade';
+function verb(ac, secs, wet) { // small generated room echo
+  const len = Math.floor(ac.sampleRate * secs), ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+  const cv = ac.createConvolver(); cv.buffer = ir; const g = ac.createGain(); g.gain.value = wet;
+  cv.connect(g).connect(ac.destination); return cv;
+}
+function bus(ac, vol, wet, secs) { const g = ac.createGain(); g.gain.value = vol; g.connect(ac.destination); if (wet) g.connect(verb(ac, secs || 1.6, wet)); return g; }
+function bell(ac, out, f, t0, v, len) { // glass bell: a few inharmonic partials, the high ones fade first
+  [[1, 1, 1], [2.76, 0.45, 0.6], [5.4, 0.22, 0.35], [8.93, 0.1, 0.2]].forEach(([m, a, dl]) => note(ac, out, 'sine', f * m, t0, v * a, (len || 1.4) * dl));
+}
+function pluck(ac, out, f, t0, v, len) { // modern synth pluck: bright saw closing quickly to a soft tone
+  const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain(); len = len || 0.45;
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0); lp.type = 'lowpass'; lp.Q.value = 3;
+  lp.frequency.setValueAtTime(5000, t0); lp.frequency.exponentialRampToValueAtTime(500, t0 + len * 0.6);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  o.connect(lp).connect(g).connect(out); o.start(t0); o.stop(t0 + len + 0.05);
+}
+function echo(ac, out, time, fb) { // gentle repeat, softened a little each time
+  const d = ac.createDelay(1), f = ac.createGain(), lp = ac.createBiquadFilter(), inp = ac.createGain();
+  d.delayTime.value = time; f.gain.value = fb; lp.type = 'lowpass'; lp.frequency.value = 2600;
+  inp.connect(out); inp.connect(d); d.connect(lp).connect(f).connect(d); lp.connect(out); return inp;
+}
+function pad(ac, out, steps, t0, v, len) { // warm chord: two slightly detuned saws per note, slow swell
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.connect(out);
+  steps.forEach(st => [-7, 7].forEach(cents => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = nt(st); o.detune.value = cents;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.15); g.gain.setValueAtTime(v, t0 + len * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+    o.connect(g).connect(lp); o.start(t0); o.stop(t0 + len + 0.05);
+  }));
+}
+function whoosh(ac, out, t0, len, v) { // airy rising swell
+  const n = Math.floor(ac.sampleRate * len), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = b;
+  bp.type = 'bandpass'; bp.Q.value = 1.5; bp.frequency.setValueAtTime(700, t0); bp.frequency.exponentialRampToValueAtTime(7000, t0 + len);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  src.connect(bp).connect(g).connect(out); src.start(t0);
+}
+const WIN_STYLES = {
+  arcade: { star: (ac, t, k) => starBlip(ac, t, [7, 12, 16][k - 1]),
+            chime: (ac, t, perfect) => perfect ? JINGLES.winChimeBig(ac, t) : JINGLES.winChime(ac, t) },
+  // 1) Glass bells: clear bell tones in a soft room
+  glass: {
+    star: (ac, t, k) => bell(ac, bus(ac, 1, 0.35), nt([12, 16, 19][k - 1]), t, 0.16, 1.4),
+    chime: (ac, t, perfect) => {
+      const out = bus(ac, 1, 0.45, 2.2);
+      (perfect ? [19, 24, 28, 31, 36, 40, 43] : [19, 24, 28, 31]).forEach((st, k) => bell(ac, out, nt(st), t + k * 0.075, 0.12, perfect ? 2.2 : 1.6));
+      if (perfect) [43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), t + 0.65 + k * 0.12, 0.04, 1.2));
+    } },
+  // 2) Synth pluck: modern pop pluck with an echo, ending on a warm chord
+  pluck: {
+    star: (ac, t, k) => { const out = echo(ac, bus(ac, 1, 0.2), 0.16, 0.28); pluck(ac, out, nt([7, 12, 16][k - 1]), t, 0.16); note(ac, out, 'sine', nt([7, 12, 16][k - 1] - 12), t, 0.12, 0.3); },
+    chime: (ac, t, perfect) => {
+      const out = echo(ac, bus(ac, 1, 0.25), 0.18, 0.3);
+      (perfect ? [12, 16, 19, 24, 19, 24, 28, 31] : [12, 16, 19, 24]).forEach((st, k) => pluck(ac, out, nt(st), t + k * 0.09, 0.13, 0.4));
+      const tp = t + (perfect ? 8 : 4) * 0.09;
+      pad(ac, out, perfect ? [0, 4, 7, 12, 16] : [0, 4, 7, 12], tp, perfect ? 0.03 : 0.025, perfect ? 1.4 : 1.0);
+      note(ac, out, 'sine', nt(-12), tp, 0.18, perfect ? 1.2 : 0.8);
+    } },
+  // 3) Sparkle pop: bubbly pops, an airy whoosh and a shimmering chord
+  sparkle: {
+    star: (ac, t, k) => { const out = bus(ac, 1, 0.3); const f = nt([7, 12, 16][k - 1]); note(ac, out, 'sine', f * 0.5, t, 0.3, 0.14, f * 1.5); note(ac, out, 'sine', f * 2, t + 0.05, 0.08, 0.25); },
+    chime: (ac, t, perfect) => {
+      const out = bus(ac, 1, 0.45, 2.0);
+      whoosh(ac, out, t, perfect ? 0.6 : 0.4, 0.18);
+      const tc = t + (perfect ? 0.5 : 0.32);
+      (perfect ? [12, 16, 19, 24, 28] : [12, 16, 19, 24]).forEach(st => [-6, 6].forEach(c => {
+        const o = ac.createOscillator(), g = ac.createGain(), tr = ac.createOscillator(), tg = ac.createGain();
+        o.type = 'sine'; o.frequency.value = nt(st); o.detune.value = c; tr.frequency.value = 6; tg.gain.value = 0.02; tr.connect(tg).connect(g.gain);
+        g.gain.setValueAtTime(0.0001, tc); g.gain.exponentialRampToValueAtTime(0.045, tc + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, tc + (perfect ? 1.6 : 1.1));
+        o.connect(g).connect(out); o.start(tc); o.stop(tc + 1.7); tr.start(tc); tr.stop(tc + 1.7);
+      }));
+      if (perfect) [36, 43, 40, 48, 45, 52, 43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), tc + 0.08 + k * 0.07, 0.05, 0.18));
+    } },
+};
+function winSound(kind, arg, style) {
+  if (!S.sound) return;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    WIN_STYLES[style || WIN_STYLE][kind](actx, actx.currentTime + 0.01, arg); } catch (e) {}
+}
 // Paper rip: a chunky paper "brrrt" through the teeth, a soft thunk, and a bright chime.
 function paperShred(ac, t, step, out) {
   // 1) the rip: noise chopped by the cutter teeth (~70 per second), swept from bright to dull
@@ -1458,8 +1540,8 @@ function win() {
     ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
-  for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), landAt(k));
-  setTimeout(() => sfx(perfect ? 'winChimeBig' : 'winChime'), landAt(s) + 380);
+  for (let k = 1; k <= s; k++) setTimeout(() => winSound('star', k), landAt(k));
+  setTimeout(() => winSound('chime', perfect), landAt(s) + 380);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
@@ -1794,7 +1876,7 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t) };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); }, killWorker: () => killWorker(), stallWorker: () => { if (worker) worker.postMessage = () => {}; }, req: st => new Promise(r => requestBoard(st, r)), shredSound: (ac, t, step, style) => shredSound(ac, t, step, style), jingle: (k, ac, t) => JINGLES[k](ac, t), winStyle: (st, kind, ac, t, arg) => WIN_STYLES[st][kind](ac, t, arg) };
 })();
 </script>
 
