@@ -590,20 +590,20 @@ function whoosh(ac, out, t0, len, v) { // airy rising swell
 }
 const WIN_STYLES = {
   arcade: { star: (ac, t, k) => starBlip(ac, t, [7, 12, 16][k - 1]),
-            chime: (ac, t, perfect) => perfect ? JINGLES.winChimeBig(ac, t) : JINGLES.winChime(ac, t) },
+            chime: (ac, t, stars) => stars === 3 ? JINGLES.winChimeBig(ac, t) : JINGLES.winChime(ac, t) },
   // 1) Glass bells: clear bell tones in a soft room
   glass: {
     star: (ac, t, k) => bell(ac, bus(ac, 1, 0.35), nt([12, 16, 19][k - 1]), t, 0.16, 1.4),
-    chime: (ac, t, perfect) => {
-      const out = bus(ac, 1, 0.45, 2.2);
+    chime: (ac, t, stars) => {
+      const perfect = stars === 3, out = bus(ac, 1, 0.45, 2.2);
       (perfect ? [19, 24, 28, 31, 36, 40, 43] : [19, 24, 28, 31]).forEach((st, k) => bell(ac, out, nt(st), t + k * 0.075, 0.12, perfect ? 2.2 : 1.6));
       if (perfect) [43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), t + 0.65 + k * 0.12, 0.04, 1.2));
     } },
   // 2) Synth pluck: modern pop pluck with an echo, ending on a warm chord
   pluck: {
     star: (ac, t, k) => { const out = echo(ac, bus(ac, 1, 0.2), 0.16, 0.28); pluck(ac, out, nt([7, 12, 16][k - 1]), t, 0.16); note(ac, out, 'sine', nt([7, 12, 16][k - 1] - 12), t, 0.12, 0.3); },
-    chime: (ac, t, perfect) => {
-      const out = echo(ac, bus(ac, 1, 0.25), 0.18, 0.3);
+    chime: (ac, t, stars) => {
+      const perfect = stars === 3, out = echo(ac, bus(ac, 1, 0.25), 0.18, 0.3);
       (perfect ? [12, 16, 19, 24, 19, 24, 28, 31] : [12, 16, 19, 24]).forEach((st, k) => pluck(ac, out, nt(st), t + k * 0.09, 0.13, 0.4));
       const tp = t + (perfect ? 8 : 4) * 0.09;
       pad(ac, out, perfect ? [0, 4, 7, 12, 16] : [0, 4, 7, 12], tp, perfect ? 0.03 : 0.025, perfect ? 1.4 : 1.0);
@@ -612,8 +612,9 @@ const WIN_STYLES = {
   // 3) Sparkle pop: bubbly pops, an airy whoosh and a shimmering chord
   sparkle: {
     star: (ac, t, k) => { const out = bus(ac, 1.9, 0.3); const f = nt([7, 12, 16][k - 1]); note(ac, out, 'sine', f * 0.5, t, 0.3, 0.14, f * 1.5); note(ac, out, 'sine', f * 2, t + 0.05, 0.08, 0.25); },
-    chime: (ac, t, perfect) => {
-      const out = bus(ac, 1.9, 0.45, 2.0);
+    chime: (ac, t, stars) => {
+      if (stars === 1) return sparkleTryAgain(ac, t);
+      const perfect = stars === 3, out = bus(ac, 1.9, 0.45, 2.0);
       whoosh(ac, out, t, perfect ? 0.6 : 0.4, 0.18);
       const tc = t + (perfect ? 0.5 : 0.32);
       (perfect ? [12, 16, 19, 24, 28] : [12, 16, 19, 24]).forEach(st => [-6, 6].forEach(c => {
@@ -625,6 +626,18 @@ const WIN_STYLES = {
       if (perfect) [36, 43, 40, 48, 45, 52, 43, 48].forEach((st, k) => note(ac, out, 'sine', nt(st), tc + 0.08 + k * 0.07, 0.05, 0.18));
     } },
 };
+// 1 star: a softer "try again" chime in the Sparkle pop sound. A small dip down and a lift back up that
+// doesn't quite resolve (you can do better), quieter, with no big whoosh or glitter.
+function sparkleTryAgain(ac, t) {
+  const out = bus(ac, 2.6, 0.35, 1.6);
+  whoosh(ac, out, t, 0.22, 0.06);
+  [[12, 0.12, 0.5], [7, 0.32, 0.5], [9, 0.56, 0.9]].forEach(([st, dt, len]) => [-5, 5].forEach(c => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = nt(st); o.detune.value = c;
+    g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.035, t + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + len);
+    o.connect(g).connect(out); o.start(t + dt); o.stop(t + dt + len + 0.05);
+  }));
+  note(ac, out, 'sine', nt(21), t + 0.6, 0.02, 0.5); // a faint glint of hope on the last note
+}
 function winSound(kind, arg, style) {
   if (!S.sound) return;
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
@@ -1154,7 +1167,7 @@ function win() {
             : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   const landAt = k => (0.25 + (k - 1) * 0.38 + 0.42) * 1000; // when star k lands in its slot
   for (let k = 1; k <= s; k++) setTimeout(() => winSound('star', k), landAt(k));
-  setTimeout(() => winSound('chime', perfect), landAt(s) + 380);
+  setTimeout(() => winSound('chime', s), landAt(s) + 380);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
   if ($('goUnst')) $('goUnst').onclick = startUnstoppable;
