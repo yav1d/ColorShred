@@ -182,7 +182,14 @@ button:disabled { cursor: default; }
 
 /* overlays */
 .overlay { position: absolute; inset: 0; background: #0b0c18cc; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: grid; place-items: center; z-index: 20; padding: 16px; overflow-y: auto; }
+  display: flex; z-index: 20; padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.overlay > .card { margin: auto; }
+@media (max-height: 760px) {
+  .card { padding: 18px 18px 16px; } .card h3 { font-size: 30px; } .card p { margin-bottom: 10px; }
+  .btn { padding: 11px; margin-top: 8px; font-size: 17px; }
+  .slot { width: 50px; height: 50px; } .slot.mid { width: 62px; height: 62px; }
+  .unlock { padding: 8px 10px; } .unlock i { width: 34px; height: 34px; } .reward { margin-bottom: 6px; }
+}
 .card { box-sizing: border-box; min-width: 0; width: min(360px, 100%); background: var(--steel); border-radius: 26px; padding: 24px 22px 20px; text-align: center;
   box-shadow: 0 20px 50px #0009, inset 0 2px 0 #ffffff18; }
 .card h3 { font-family: var(--display); font-weight: 400; font-size: 34px; margin: 0 0 6px; }
@@ -1220,7 +1227,7 @@ function win() {
     if (extra <= 5) return pick([`Nice work! Solved in ${moves} moves. A perfect solve takes ${W.opt}.`, `Shredded in ${moves} moves! You're getting closer to perfect (${W.opt}).`]);
     return pick([`You did it in ${moves} moves! Every level makes you sharper.`, `Solved in ${moves} moves! A perfect solve takes ${W.opt}. Can you find it?`]);
   };
-  const retry = s < 3 && !finished; // fewer than 3 stars: the main button is Retry
+  const retry = s < 3 && !finished; // fewer than 3 stars: offer a retry, but moving on is always the main choice
   const noPU = !Object.keys(used).length;
   showCard(`<div class="stars" aria-label="${s} of 3 stars">${starsHtml}</div>
     <h3>${finished ? 'All levels done!' : s === 3 ? 'Perfect!' : 'Shredded!'}</h3>
@@ -1228,9 +1235,9 @@ function win() {
     ${coins ? `<div class="reward"><i class="coin"></i>+${coins}</div>` : ''}
     ${first ? `<div class="unlock"><i style="background:${p.css}"></i><div>New color unlocked<b>${p.name}</b></div><button id="equipBtn">${S.equipped === li ? 'Equipped' : 'Use it'}</button></div>` : ''}
     ${finished ? `<button class="btn" id="goUnst">Play Unstoppable</button>` : ''}
-    ${retry ? `<button class="btn" id="replayBtn">Retry for 3 stars</button><p class="goal">3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>` : ''}
-    ${!finished && next >= 0 ? `<button class="btn${retry ? ' alt' : ''}" id="nextBtn">Next level</button>` : ''}
-    ${retry ? '' : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
+    ${!finished && next >= 0 ? `<button class="btn" id="nextBtn">Next level</button>` : ''}
+    ${retry ? `<button class="btn alt" id="replayBtn">Retry for 3 stars</button><p class="goal">Optional: 3 stars needs ${W.opt} moves or fewer${noPU ? '' : ', without power-ups'}.</p>`
+            : '<button class="btn alt" id="replayBtn">Replay</button>'}<button class="btn alt" id="menuBtn">Menu</button>`);
   for (let k = 1; k <= s; k++) setTimeout(() => sfx('star' + k), (0.25 + (k - 1) * 0.38 + 0.42) * 1000);
   if ($('equipBtn')) $('equipBtn').onclick = () => { S.equipped = li; save(); applyTheme(); $('equipBtn').textContent = 'Equipped'; };
   if ($('nextBtn')) $('nextBtn').onclick = () => startCampaign(next, false);
