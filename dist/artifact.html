@@ -248,8 +248,18 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 .sndpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .sndpick .btn { font-size: 14px; padding: 11px 4px; margin-top: 6px; }
 .sndpick .btn.on { background: var(--accent); color: #241a00; }
-.rescue-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; font-size: 14px; color: var(--text); font-weight: 700; margin: 2px 0 10px; }
+.rescue-box { margin: 4px 0 6px; padding: 12px 12px 14px; border-radius: 22px; background: linear-gradient(180deg, #ffc93c2b, #ff8a3d14);
+  box-shadow: 0 0 0 3px var(--accent), 0 0 26px #ffc93c55; animation: rescueIn .5s cubic-bezier(.3, 1.5, .5, 1) both, rescueGlow 1.6s ease-in-out .5s infinite; }
+.rescue-box.broke { box-shadow: 0 0 0 2px #ffffff22; background: #ffffff08; animation: none; }
+@keyframes rescueIn { from { transform: scale(.85); opacity: 0; } }
+@keyframes rescueGlow { 50% { box-shadow: 0 0 0 3px #ffe27a, 0 0 40px #ffc93c99; } }
+.rescue-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 10px; }
+.rescue-head .keep { font-family: var(--display); font-size: 30px; margin-left: 6px; transform-origin: left center; line-height: 1; color: var(--accent); text-shadow: 0 3px 0 #0006;
+  display: inline-block; transform: rotate(-3deg); animation: keepPop .6s cubic-bezier(.3, 1.8, .5, 1) .15s both; }
+.rescue-box.broke .keep { color: var(--muted); transform: none; animation: none; font-size: 24px; }
+@keyframes keepPop { from { transform: rotate(-3deg) scale(.3); opacity: 0; } }
 .rescue-head .coins { font-size: 16px; }
+.broke-note { margin: -4px 2px 10px !important; text-align: left; font-size: 13px !important; }
 .rescue { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .ropt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 4px 10px; border-radius: 16px; min-width: 0;
   background: linear-gradient(180deg, #ffc93c2e, #ffc93c14); box-shadow: inset 0 0 0 2px #ffc93c66, inset 0 -4px 0 #0003; }
@@ -267,6 +277,7 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
 @media (prefers-reduced-motion: reduce) {
   .block, .block.exiting, .block.blasting { transition-duration: 1ms; }
   .block.hint, .gate.pulse, .floater, .flash, .spinner, .slot::after, .slot.on .empty { animation: none; }
+  .rescue-box, .rescue-head .keep { animation: none; }
   .slot.on .full, .stars.perfect .slot.on .full { animation: none; opacity: 1; filter: drop-shadow(0 0 12px #ffe27a); }
   .sweep, .sparkle, .stars.perfect .slot.mid::before { animation: none; }
   .slot.on .empty { fill: #ffc93c55; }
@@ -1180,7 +1191,7 @@ setInterval(() => {
   timeLeft--; updateHud();
   if (mode === 'campaign' && timeLeft % 5 === 0) saveCurrent();
   if (timeLeft <= 0) {
-    if (mode === 'unstoppable') unstoppableTimeUp(); else lose("Time's up", 'The clock beat you this round.');
+    if (mode === 'unstoppable') unstoppableTimeUp(); else lose("Time's up", 'Welp! The clock got you.');
   }
 }, 1000);
 
@@ -1487,7 +1498,7 @@ function usePower(k, i) {
 function checkEnd() {
   if (over) return;
   if (!pos.some(p => p >= 0)) return mode === 'unstoppable' ? unstoppableClear() : win();
-  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Every drag counts as one move. Try a tighter route.');
+  if (mode === 'campaign' && moves >= W.moves + extraMoves) lose('Out of moves', 'Welp! So close.');
 }
 function win() {
   over = true; clearHint(); setTimeout(() => sfx('levelDone'), 250);
@@ -1543,13 +1554,14 @@ let rescues = 0;
 const rescueOptions = kind => RESCUE[kind].map(([amt, c]) => [amt, Math.round(c * (1 + 0.5 * rescues) / 5) * 5]);
 function rescueHtml(kind) {
   const opts = rescueOptions(kind), any = opts.some(([, c]) => S.coins >= c);
-  return `<div class="rescue-head"><span>${any ? 'Keep going? Your board stays just as it is.' : 'Not enough coins to keep going. Beat levels to earn more.'}</span>
-      <span class="coins"><i class="coin"></i>${S.coins}</span></div>
+  return `<div class="rescue-box${any ? '' : ' broke'}"><div class="rescue-head">
+      <span class="keep">${any ? 'Keep going?' : 'Out of coins'}</span><span class="coins"><i class="coin"></i>${S.coins}</span></div>
+    ${any ? '' : '<p class="broke-note">Beat levels to earn more coins.</p>'}
     <div class="rescue">${opts.map(([amt, cost], k) => {
       const ok = S.coins >= cost;
       return `<button class="ropt" data-k="${k}"${ok ? '' : ' disabled'}><b>+${amt}</b><span>${kind === 'moves' ? 'moves' : 'seconds'}</span>
         <em><i class="coin"></i>${cost}</em>${ok ? '' : `<small>need ${cost - S.coins} more</small>`}</button>`;
-    }).join('')}</div>`;
+    }).join('')}</div></div>`;
 }
 function wireRescue(kind, onBuy) {
   $('card').querySelectorAll('.ropt').forEach(b => b.onclick = () => {
@@ -1569,7 +1581,7 @@ function lose(title, msg) {
 }
 function unstoppableTimeUp() {
   over = true; sfx('lose'); clearHint();
-  showCard(`<h3>Time's up</h3><p>Stage ${U.stage} · ${U.cleared} board${U.cleared === 1 ? '' : 's'} cleared.</p>${rescueHtml('time')}
+  showCard(`<h3>Time's up</h3><p>Welp! The clock got you on stage ${U.stage}.</p>${rescueHtml('time')}
     <button class="btn alt" id="endBtn">End run</button>`);
   $('endBtn').onclick = () => endRun(false);
   wireRescue('time', amt => { over = false; timeLeft += amt; updateHud(); });
