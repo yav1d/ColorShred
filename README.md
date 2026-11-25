@@ -7,6 +7,7 @@ A sliding-block color puzzle for phones. Drag each block into the shredder gate 
   A solver checks every level, so each one can be solved and has a known minimum move count.
 - **Unstoppable**: endless boards generated on the phone. Moves are unlimited and the clock is what you fight. You start with 1:30.
   Each cleared board adds 10 seconds, plus more for harder boards (up to 30), and the next board gets harder, with some randomness.
+  If you solve a board with less than 12 seconds left, the next one is an easy board to help you recover.
 
 ## Rules
 - Drag a block. It slides around other blocks and walls.

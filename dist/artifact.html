@@ -1304,13 +1304,19 @@ function requestBoard(stage, cb) {
   }, 30);
 }
 function prefetch(stage) {
-  U.next = null; const run = U;
+  U.next = null; U.fetching = true; const run = U;
   requestBoard(stage, res => {
     if (U !== run) return;
     if (res.error) return prefetch(stage);
-    U.next = res;
+    U.next = res; U.fetching = false;
     if (U.waiting) { U.waiting = false; loadUnstoppableBoard(); }
   });
+}
+// A quick, easy board (stage-1 difficulty), made on the spot when the clock is nearly out.
+function easyBoard() {
+  let r = { lvl: null };
+  for (let k = 0; k < 20 && !r.lvl; k++) { CSGen.setSeed((Date.now() + k * 7919) | 0); r = CSGen.generate(CSGen.unstoppableTier(1), { cap: 4000 }); }
+  return r.lvl ? { lvl: r.lvl, relocs: r.relocs } : null;
 }
 function startUnstoppable() {
   mode = 'unstoppable'; U = { stage: 1, cleared: 0, earned: 0, next: null, waiting: true };
@@ -1325,21 +1331,23 @@ function showGenerating() {
   $('stage').innerHTML = '<div class="gen"><div><div class="spinner"></div>Building the next board…</div></div>';
   $('powers').innerHTML = '';
 }
-function loadUnstoppableBoard() {
-  const res = U.next; U.next = null;
+function loadUnstoppableBoard(given) {
+  const res = given || U.next; if (!given) U.next = null;
   W = res.lvl; W.__orig = clone(W.blocks); W.tier = 'unstoppable'; W.opt = W.blocks.length + res.relocs;
   ctx = null; rebuildCtx();
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
   $('lvName').textContent = 'Stage ' + U.stage;
   buildBoard(); updateHud();
-  if (U.stage > 1) flash('Stage ' + U.stage);
-  prefetch(U.stage + 1);
+  if (given) flash('Easy one!'); else if (U.stage > 1) flash('Stage ' + U.stage);
+  // keep a regular board ready (an easy board doesn't use up the one already waiting)
+  if (!U.next && !U.fetching) prefetch(U.stage + 1);
 }
 function unstoppableClear() {
   // Time bonus: 10 seconds, plus more for harder boards (extra moves the board needed, and its size), up to 30 seconds.
   const relocs = W.opt - W.blocks.length;
   const bonus = 10 + Math.min(20, relocs * 2 + Math.floor(Math.max(0, W.blocks.length - 10) / 3));
   const coins = 5 + Math.floor(U.stage / 2);
+  const rescue = timeLeft < 12; // nearly out of time when solved: the next board is an easy one
   U.cleared++; U.earned += coins; timeLeft += bonus;
   setCoins(S.coins + coins, true); sfx('coin');
   flash(`+${bonus}s`);
@@ -1348,7 +1356,9 @@ function unstoppableClear() {
   busy = true;
   setTimeout(() => {
     busy = false;
-    if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
+    const easy = rescue && easyBoard();
+    if (easy) loadUnstoppableBoard(easy);
+    else if (U.next) loadUnstoppableBoard(); else { U.waiting = true; showGenerating(); }
   }, 650);
 }
 function endRun(quit) {
@@ -1502,6 +1512,6 @@ try {
   if (ios && navigator.standalone === false && window.top === window && !lsGet('colorshred:hideInstall')) $('installTip').hidden = false;
 } catch (e) {}
 $('installClose').onclick = () => { $('installTip').hidden = true; lsSet('colorshred:hideInstall', '1'); };
-window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S };
+window.__game = { pos: () => pos, ctx: () => ctx, level: () => W, cs: () => cs, moves: () => moves, start: startCampaign, unst: startUnstoppable, run: () => U, save: () => S, setTime: t => { timeLeft = t; updateHud(); } };
 })();
 </script>
