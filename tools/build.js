@@ -31,8 +31,40 @@ let page = fs.readFileSync(path.join(root, 'src/game.html'), 'utf8')
   .replace('<script>/*LEVELS*/</script>', () => `<script>window.CS_LEVELS = ${JSON.stringify(levels)};\nwindow.CS_LEGACY = ${JSON.stringify(legacy)};</script>`);
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist/artifact.html'), page); // fragment: artifact host adds the document skeleton
-fs.writeFileSync(path.join(root, 'index.html'),
-  `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">\n` +
-  page.replace('<div id="home"', '</head>\n<body>\n<div id="home"') + '\n</body>\n</html>\n');
+// Standalone web app (site/): host this folder anywhere (GitHub Pages workflow included) and add it to the iPhone home screen.
+const site = path.join(root, 'site');
+fs.mkdirSync(site, { recursive: true });
+const hash = require('crypto').createHash('sha1').update(page).digest('hex').slice(0, 10);
+const head = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n` +
+  `<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">\n` +
+  `<meta name="description" content="Slide every block into its matching shredder. 200 puzzle levels and an endless mode.">\n` +
+  `<link rel="manifest" href="manifest.webmanifest">\n<link rel="apple-touch-icon" href="apple-touch-icon.png">\n<link rel="icon" type="image/png" href="icon-192.png">\n`;
+const swReg = `<script>if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>\n`;
+fs.writeFileSync(path.join(site, 'index.html'), head + page.replace('<!-- Welcome -->', '</head>\n<body>\n<!-- Welcome -->') + '\n' + swReg + '</body>\n</html>\n');
+for (const f of ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) fs.copyFileSync(path.join(root, 'assets', f), path.join(site, f));
+fs.writeFileSync(path.join(site, 'manifest.webmanifest'), JSON.stringify({
+  name: 'ColorShred', short_name: 'ColorShred', description: 'Slide every block into its matching shredder.',
+  start_url: './', scope: './', display: 'standalone', orientation: 'portrait', background_color: '#16172a', theme_color: '#16172a',
+  icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }],
+}, null, 2));
+fs.writeFileSync(path.join(site, 'sw.js'), `// Offline support. The page is fetched fresh when online (so updates arrive) and served from cache when offline.
+const CACHE = 'colorshred-${hash}';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', e => {
+  const req = e.request; if (req.method !== 'GET') return;
+  if (req.mode === 'navigate') {
+    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return r; })
+      .catch(() => caches.match('index.html')));
+    return;
+  }
+  e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
+    if (r.ok && (req.url.startsWith(self.location.origin) || req.url.includes('fonts.g'))) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+    return r;
+  })));
+});
+`);
 const counts = levels.reduce((m, l) => (m[l.tier] = (m[l.tier] || 0) + 1, m), {});
 console.log('Built', levels.length, 'levels', counts);

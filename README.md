@@ -20,13 +20,21 @@ A sliding-block color puzzle for phones. Drag each block into the shredder gate 
 - Every level you beat unlocks a new **board color**. Choose it under Colors.
 - Progress, including a level in progress, saves on the phone automatically. Settings has a backup code you can copy and load later.
 
-## Play on iPhone
-Open `index.html` from any static host (for example GitHub Pages). In Safari, tap **Share → Add to Home Screen** for a full-screen app icon.
+## Ship it (free web app with a home-screen icon)
+`site/` is the finished app: the page, app icons, a manifest and an offline cache. Any static host works. With GitHub Pages:
+1. Merge this branch into `main`.
+2. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+   (Pages on a private repository needs a paid GitHub plan. Otherwise make the repository public.)
+3. The **Deploy to GitHub Pages** workflow publishes on every push to `main`, at `https://<user>.github.io/<repo>/`.
+
+On the iPhone: open that address in **Safari**, tap **Share → Add to Home Screen**. ColorShred then opens full screen like an app,
+works offline, and keeps progress on the phone (Settings has a backup code).
 
 ## Development
 - `src/engine.js`: rules and the optimal solver.
 - `src/gen.js`: level generator, used by the build tools and in-game by Unstoppable mode (in a Web Worker).
 - `src/game.html`: the game UI.
 - `tools/generate.js <tier> <count> <seed> <out.json>`: generates verified levels (`easy`, `medium`, `hard`, `superhard`).
-- `tools/build.js [level json files...]`: merges levels into `src/levels.json` (up to 50 per tier) and builds `index.html` and `dist/artifact.html`.
+- `tools/build.js [level json files...]`: merges levels into `src/levels.json` (up to 50 per tier) and builds `site/` (the web app) and `dist/artifact.html`.
+- `tools/icons.js`: renders the app icons into `assets/` (needs Playwright).
 - `tools/reverify.js`: re-solves every level with the current rules.
