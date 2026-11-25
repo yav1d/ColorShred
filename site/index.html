@@ -1200,8 +1200,17 @@ function usePower(k, i) {
   if (k === 'thaw' && !CS.frozen(ctx, pos, i)) { toast('Pick a frozen block.'); return; }
   if (k === 'recolor') {
     const cur = ctx.blocks[i].c;
-    const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur);
+    // Only offer colors whose gate this block can actually get through: big enough for its shape,
+    // on a side its arrows allow, and reachable from where it is (walls considered, other blocks ignored).
+    const b = W.blocks[i], a0 = pos[i];
+    const fitsColor = c => {
+      const solo = { w: W.w, h: W.h, walls: W.walls, gates: W.gates, blocks: [{ c, sh: b.sh, x: a0 % W.w, y: Math.floor(a0 / W.w), ax: b.ax || 0 }] };
+      const c2 = CS.makeCtx(solo), p = [a0], occ = CS.occupancy(c2, p);
+      return CS.reachable(c2, occ, p, 0).some(a => CS.canExitFrom(c2, 0, a, occ));
+    };
+    const opts = [...new Set(W.gates.map(g => g.c))].filter(c => c !== cur && fitsColor(c));
     armed = null; renderPowers();
+    if (!opts.length) { toast('No other gate is big enough for this block. Pick a different block.'); armed = 'recolor'; renderPowers(); return; }
     showCard(`<h3>Recolor</h3><p>Pick a new color for this block. Costs ${PU.recolor.cost} coins.</p>
       <div class="picks">${opts.map(c => `<button data-c="${c}" style="background:${COLORS[c]}" aria-label="Color ${c + 1}">${symSvg(c, 'p')}</button>`).join('')}</div>
       <button class="btn alt" id="pickCancel">Cancel</button>`);
