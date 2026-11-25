@@ -1326,7 +1326,7 @@ function buildHere(stage, seed, band) {
   for (let k = 0; k < 8 && !r.lvl; k++) { CSGen.setSeed(seed + k * 7919); r = CSGen.generate(CSGen.unstoppableTier(band.d, band.lo, band.hi), { cap: 4000 }); }
   return r.lvl ? { stage, lvl: r.lvl, relocs: r.relocs } : { stage, error: true };
 }
-// Unstoppable difficulty: a warm-up from easy to medium until stage U.hardAt (15-20: earlier the better you play),
+// Unstoppable difficulty: a warm-up from easy to medium until stage U.hardAt (10-20: earlier the better you play),
 // then hard boards that climb to superhard over about ten stages. Warm-up boards never turn hard.
 function stageBand(stage) {
   const T = U.hardAt;
@@ -1389,13 +1389,10 @@ function loadUnstoppableBoard(given) {
   ctx = null; rebuildCtx();
   pos = ctx.blocks.map(b => b.y * W.w + b.x); moves = 0; extraMoves = 0; hist = []; used = {}; over = false; busy = false; armed = null;
   $('lvName').textContent = 'Stage ' + U.stage;
-  const band = given ? U.band : (res.band || 'warm'), changed = band !== U.band; U.band = band;
-  const look = { warm: ['Unstoppable', TIER.unstoppable.color], hard: ['Unstoppable · Hard', '#FF8A3D'], superhard: ['Unstoppable · Superhard', '#F2545B'] }[band];
-  $('lvTier').textContent = look[0]; $('play').style.setProperty('--tc', look[1]);
+  U.band = given ? U.band : (res.band || 'warm'); // kept to ourselves: the player only ever sees "Stage N"
   U.boardStart = timeLeft;
   buildBoard(); updateHud();
   if (given) flash('Easy one!');
-  else if (changed) flash(band === 'hard' ? 'Hard boards!' : 'Superhard!');
   else if (U.stage > 1) flash('Stage ' + U.stage);
   // keep a regular board ready (an easy board doesn't use up the one already waiting)
   if (!U.next && !U.fetching) prefetch(U.stage + 1);
@@ -1406,10 +1403,10 @@ function unstoppableClear() {
   const bonus = 10 + Math.min(20, relocs * 2 + Math.floor(Math.max(0, W.blocks.length - 10) / 3));
   const coins = 5 + Math.floor(U.stage / 2);
   const rescue = timeLeft < 12; // nearly out of time when solved: the next board is an easy one
-  // Playing well = solving a board faster than the time it gives back. Every 2 such boards bring hard boards
-  // one stage closer, from stage 20 down to stage 15 at the earliest (only while still in the warm-up).
+  // Playing well = solving a board faster than the time it gives back. Each such board brings hard boards one
+  // stage closer: the warm-up lasts until stage 20 at most and stage 10 at the least. Players are never told.
   if (U.boardStart - timeLeft <= bonus) U.good++;
-  if (U.stage < U.hardAt) U.hardAt = Math.max(U.stage + 1, 20 - Math.min(5, Math.floor(U.good / 2))); // locked once the next board is hard
+  if (U.stage < U.hardAt) U.hardAt = Math.max(U.stage + 1, 20 - Math.min(10, U.good)); // locked once the next board is hard
   U.cleared++; U.earned += coins; timeLeft += bonus;
   setCoins(S.coins + coins, true); sfx('coin');
   flash(`+${bonus}s`);
@@ -1536,7 +1533,7 @@ function showSettings() {
 }
 function goBack() {
   if (mode === 'unstoppable' && U && !over) {
-    showCard(`<h3>Paused</h3><p>Stage ${U.stage} · ${U.cleared} cleared. The clock is stopped.<br>${U.band === 'warm' ? `Hard boards start at stage ${U.hardAt + 1}. Play fast to get there sooner.` : `Hard boards since stage ${U.hardAt + 1}.`}</p>
+    showCard(`<h3>Paused</h3><p>Stage ${U.stage} · ${U.cleared} cleared. The clock is stopped.</p>
       <button class="btn" id="resumeBtn">Resume</button><button class="btn alt" id="quitBtn">End run</button>`);
     $('resumeBtn').onclick = hideOverlay; $('quitBtn').onclick = () => { hideOverlay(); endRun(true); };
     return;
