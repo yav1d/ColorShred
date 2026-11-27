@@ -13,6 +13,8 @@ const pick = arr => arr[Math.floor(rnd() * arr.length)];
 const TIERS = {
   easy:      { w: [5, 6], h: [6, 7], colors: [3, 4], walls: [0, 1], shapes: [0,1,2,3,4,5], axisP: 0, iceP: 0, fill: [0.6, 0.75], target: [0, 1], tries: 20 },
   medium:    { count: 20, w: [6, 6], h: [7, 8], colors: [4, 5], walls: [0, 2], shapes: [0,1,2,3,4,5,6,7,8,9], axisP: 0.15, iceP: 0.0, fill: [0.78, 0.86], target: [2, 4], tries: 120 },
+  easy2:     { w: [5, 6], h: [6, 7], colors: [3, 4], walls: [0, 1], shapes: [0,1,2,3,4,5], axisP: 0, iceP: 0, fill: [0.6, 0.75], target: [0, 1], tries: 20 },
+  medium2:   { count: 20, w: [6, 6], h: [7, 8], colors: [4, 5], walls: [0, 2], shapes: [0,1,2,3,4,5,6,7,8,9], axisP: 0.15, iceP: 0.0, fill: [0.78, 0.86], target: [2, 4], tries: 120 },
   hard:      { count: 20, w: [6, 7], h: [8, 9], colors: [5, 6], walls: [0, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12], axisP: 0.25, iceP: 0.08, fill: [0.82, 0.9], target: [4, 5], tries: 160 },
   superhard: { count: 20, w: [7, 7], h: [9, 10], colors: [6, 8], walls: [1, 4], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], axisP: 0.3, iceP: 0.1, fill: [0.86, 0.93], target: [6, 99], tries: 200 },
   expert:    { w: [7, 7], h: [8, 9], colors: [5, 7], walls: [1, 3], shapes: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], axisP: 0.25, iceP: 0.1, fill: [0.84, 0.9], target: [5, 7], tries: 160 },

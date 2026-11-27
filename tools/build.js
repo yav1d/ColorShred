@@ -15,9 +15,9 @@ if (files.length) {
     const k = JSON.stringify([l.w, l.h, l.walls, l.gates, l.blocks]);
     if (!seen.has(k)) { seen.add(k); delete l.__ctx; levels.push(l); }
   }
-  const PER_TIER = { easy: 50, medium: 50, hard: 50, superhard: 50, expert: 100, maze: 100, frozen: 100, arrows: 100, blitz: 100 }, count = {};
+  const PER_TIER = { easy: 50, medium: 50, hard: 50, superhard: 50, expert: 100, maze: 100, frozen: 100, arrows: 100, blitz: 100, easy2: 200, medium2: 200 }, count = {};
   levels = levels.filter(l => (count[l.tier] = (count[l.tier] || 0) + 1) <= (PER_TIER[l.tier] || 0));
-  const order = { easy: 0, medium: 1, hard: 2, superhard: 3, expert: 4, maze: 5, frozen: 6, arrows: 7, blitz: 8 };
+  const order = { easy: 0, medium: 1, hard: 2, superhard: 3, expert: 4, maze: 5, frozen: 6, arrows: 7, blitz: 8, easy2: 9, medium2: 10 };
   levels.sort((a, b) => order[a.tier] - order[b.tier] || a.relocs - b.relocs || a.blocks.length - b.blocks.length);
   fs.writeFileSync(path.join(root, 'src/levels.json'), JSON.stringify(levels));
 } else levels = JSON.parse(fs.readFileSync(path.join(root, 'src/levels.json'), 'utf8'));
