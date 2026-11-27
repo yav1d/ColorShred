@@ -95,6 +95,7 @@ button:disabled { cursor: default; }
 .season span { color: var(--muted); font-size: 14px; }
 .tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .tier-head h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
+.tier-head small .upd { color: var(--accent); font-weight: 800; }
 .tier-head small { color: var(--muted); font-size: 13px; text-align: right; }
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .lv { aspect-ratio: 1; border-radius: 16px; background: var(--steel); box-shadow: inset 0 -4px 0 #0003, inset 0 1px 0 #ffffff14;
@@ -794,8 +795,8 @@ const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'maze', 'frozen'
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
-  easy2: { name: 'Easy Extra', color: '#39A0F0', blurb: '200 more relaxed boards', reward: 5, extra: true },
-  medium2: { name: 'Medium Extra', color: '#9BD43A', blurb: '200 more to sharpen up', reward: 10, extra: true },
+  easy2: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 5, extra: true },
+  medium2: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 10, extra: true },
   hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
   superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
   expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
@@ -852,7 +853,8 @@ const isExtra = i => !!TIER[LEVELS[i].tier].extra;
 const tierIdx = t => { const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); }); return r; };
 const nextInTrack = i => { const k = pathPos[i]; return k != null && k + 1 < PATH.length ? PATH[k + 1] : -1; };
 const unlocked = i => { const k = pathPos[i]; return !k || cleared(PATH[k - 1]) || cleared(i); };
-const levelLabel = i => isExtra(i) ? `${TIER[LEVELS[i].tier].name} ${tierIdx(LEVELS[i].tier).indexOf(i) + 1}` : `Level ${i + 1}`;
+const levelNo = i => pathPos[i] + 1;          // numbered in play order: Easy 1-250, Medium 251-500, ...
+const levelLabel = i => `Level ${levelNo(i)}`;
 const nextLevel = () => { for (const i of PATH) if (!cleared(i)) return i; return -1; };
 const allDone = () => nextLevel() === -1;
 
@@ -1281,8 +1283,8 @@ function renderWelcome() {
     fl.appendChild(d);
   }
   const n = nextLevel(), cur = S.current && idx[S.current.id];
-  const isNew = n >= 0 && !['easy', 'medium', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of a new tier
-  $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}${isExtra(n) ? levelLabel(n) : `Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`}`;
+  const isNew = n >= 0 && !['easy', 'medium', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of newly added boards
+  $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${levelNo(n)} · ${TIER[LEVELS[n].tier].name}`;
   { const D = dailyState(), th = THEMES[new Date().getDay()], st = liveStreak();
     $('dailySub').innerHTML = (D.done[dayKey()] ? `Done today ✓ · next in ${untilMidnight()}` : th.name) + (st ? ` · ${FLAME} ${st}` : ''); }
   $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
@@ -1295,9 +1297,11 @@ function renderLevels() {
   const wrap = $('tiers'); wrap.innerHTML = '';
   if (allDone()) wrap.insertAdjacentHTML('beforeend', `<div class="banner"><b>Complete!</b><br><span class="note">You beat all ${LEVELS.length} levels. Unstoppable mode is waiting.</span></div>`);
   const next = nextLevel(); let seasonShown = false;
-  for (const t of PATH_TIERS) {
-    const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
+  const SECTIONS = [['easy', 'easy2'], ['medium', 'medium2'], ...PATH_TIERS.filter(t => !['easy', 'easy2', 'medium', 'medium2'].includes(t)).map(t => [t])];
+  for (const group of SECTIONS) {
+    const t = group[0], r = PATH.filter(i => group.includes(LEVELS[i].tier));
     if (!r.length) continue;
+    const added = r.filter(i => isExtra(i)).length;
     const done = r.filter(cleared).length;
     if (!seasonShown && TIERS.indexOf(t) > TIERS.indexOf('superhard')) { // Season 2 starts with the first tier after Superhard
       seasonShown = true;
@@ -1305,15 +1309,15 @@ function renderLevels() {
       wrap.insertAdjacentHTML('beforeend', `<div class="season"><b>Season 2</b><span>${n} new levels</span></div>`);
     }
     const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
-    sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
+    sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${added ? `<span class="upd">Update: ${added} new levels</span><br>` : ''}${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
     const g = sec.querySelector('.grid');
     for (const i of r) {
       const b = document.createElement('button'); b.className = 'lv';
       const ok = unlocked(i), st = S.stars[LEVELS[i].id] || 0;
       if (st) b.classList.add('done');
       if (i === next) b.classList.add('next');
-      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${i + 1}, locked`); b.innerHTML = LOCK; }
-      else b.innerHTML = `${isExtra(i) ? r.indexOf(i) + 1 : i + 1}<span class="st">${'★'.repeat(st)}</span>`;
+      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${levelNo(i)}, locked`); b.innerHTML = LOCK; }
+      else b.innerHTML = `${levelNo(i)}<span class="st">${'★'.repeat(st)}</span>`;
       b.onclick = () => startCampaign(i, false);
       g.appendChild(b);
     }
