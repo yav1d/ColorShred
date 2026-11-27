@@ -393,8 +393,8 @@ const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'maze', 'frozen'
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
-  easy2: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 5, extra: true },
-  medium2: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 10, extra: true },
+  easy2: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10, extra: true }, // part of Easy (levels 51-250)
+  medium2: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20, extra: true }, // part of Medium (levels 301-500)
   hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
   superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
   expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
@@ -881,7 +881,7 @@ function renderWelcome() {
     fl.appendChild(d);
   }
   const n = nextLevel(), cur = S.current && idx[S.current.id];
-  const isNew = n >= 0 && !['easy', 'medium', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of newly added boards
+  const isNew = n >= 0 && !['easy', 'easy2', 'medium', 'medium2', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of a new Season 2 tier
   $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${levelNo(n)} · ${TIER[LEVELS[n].tier].name}`;
   { const D = dailyState(), th = THEMES[new Date().getDay()], st = liveStreak();
     $('dailySub').innerHTML = (D.done[dayKey()] ? `Done today ✓ · next in ${untilMidnight()}` : th.name) + (st ? ` · ${FLAME} ${st}` : ''); }
@@ -907,7 +907,7 @@ function renderLevels() {
       wrap.insertAdjacentHTML('beforeend', `<div class="season"><b>Season 2</b><span>${n} new levels</span></div>`);
     }
     const sec = document.createElement('section'); sec.className = 'tier'; sec.style.setProperty('--tc', TIER[t].color);
-    sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${added ? `<span class="upd">Update: ${added} new levels</span><br>` : ''}${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
+    sec.innerHTML = `<div class="tier-head"><h3 style="color:${TIER[t].color}">${TIER[t].name}</h3><small>${TIER[t].blurb}<br>${done}/${r.length} cleared${done === r.length ? ' ✓' : ''}</small></div><div class="grid"></div>`;
     const g = sec.querySelector('.grid');
     for (const i of r) {
       const b = document.createElement('button'); b.className = 'lv';
