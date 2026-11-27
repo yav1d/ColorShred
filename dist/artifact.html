@@ -794,8 +794,8 @@ const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'maze', 'frozen'
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
-  easy2: { name: 'Easy Extra', color: '#39A0F0', blurb: '200 relaxed boards, open any time', reward: 5, extra: true },
-  medium2: { name: 'Medium Extra', color: '#9BD43A', blurb: '200 more to sharpen up, open any time', reward: 10, extra: true },
+  easy2: { name: 'Easy Extra', color: '#39A0F0', blurb: '200 more relaxed boards', reward: 5, extra: true },
+  medium2: { name: 'Medium Extra', color: '#9BD43A', blurb: '200 more to sharpen up', reward: 10, extra: true },
   hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
   superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
   expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
@@ -843,15 +843,17 @@ if (!S.sndPicked) S.shredStyle = 'arcade'; // the default sound is Arcade bling 
 function save() { lsSet(KEY, JSON.stringify(S)); }
 const idx = {}; LEVELS.forEach((l, i) => { idx[l.id] = i; });
 const cleared = i => !!S.stars[LEVELS[i].id];
-// Extra collections (Easy Extra, Medium Extra) sit beside the main path: they unlock one by one on their own,
-// starting open, and never change where Play takes you.
+// The play path: tiers in this order. Easy Extra and Medium Extra come right after Easy and Medium.
+// (Levels keep their place in LEVELS, so board colors and saved progress don't move.)
+const PATH_TIERS = ['easy', 'easy2', 'medium', 'medium2', 'hard', 'superhard', 'expert', 'maze', 'frozen', 'arrows', 'blitz'];
+const PATH = PATH_TIERS.flatMap(t => LEVELS.map((l, i) => l.tier === t ? i : -1).filter(i => i >= 0));
+const pathPos = {}; PATH.forEach((i, k) => { pathPos[i] = k; });
 const isExtra = i => !!TIER[LEVELS[i].tier].extra;
 const tierIdx = t => { const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); }); return r; };
-const prevInTrack = i => { if (!isExtra(i)) return i - 1; const r = tierIdx(LEVELS[i].tier), k = r.indexOf(i); return k > 0 ? r[k - 1] : -1; };
-const nextInTrack = i => { if (!isExtra(i)) { const n = i + 1; return n < LEVELS.length && !isExtra(n) ? n : -1; } const r = tierIdx(LEVELS[i].tier), k = r.indexOf(i); return k >= 0 && k + 1 < r.length ? r[k + 1] : -1; };
-const unlocked = i => { const pv = prevInTrack(i); return pv < 0 || cleared(pv) || cleared(i); };
+const nextInTrack = i => { const k = pathPos[i]; return k != null && k + 1 < PATH.length ? PATH[k + 1] : -1; };
+const unlocked = i => { const k = pathPos[i]; return !k || cleared(PATH[k - 1]) || cleared(i); };
 const levelLabel = i => isExtra(i) ? `${TIER[LEVELS[i].tier].name} ${tierIdx(LEVELS[i].tier).indexOf(i) + 1}` : `Level ${i + 1}`;
-const nextLevel = () => { for (let i = 0; i < LEVELS.length; i++) if (!isExtra(i) && !cleared(i)) return i; return -1; };
+const nextLevel = () => { for (const i of PATH) if (!cleared(i)) return i; return -1; };
 const allDone = () => nextLevel() === -1;
 
 function setCoins(n, bump) {
@@ -1279,8 +1281,8 @@ function renderWelcome() {
     fl.appendChild(d);
   }
   const n = nextLevel(), cur = S.current && idx[S.current.id];
-  const isNew = n >= 0 && TIERS.indexOf(LEVELS[n].tier) > TIERS.indexOf('superhard') && !LEVELS.some((l, k) => cleared(k) && TIERS.indexOf(l.tier) > TIERS.indexOf('superhard'));
-  $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
+  const isNew = n >= 0 && !['easy', 'medium', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of a new tier
+  $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}${isExtra(n) ? levelLabel(n) : `Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`}`;
   { const D = dailyState(), th = THEMES[new Date().getDay()], st = liveStreak();
     $('dailySub').innerHTML = (D.done[dayKey()] ? `Done today ✓ · next in ${untilMidnight()}` : th.name) + (st ? ` · ${FLAME} ${st}` : ''); }
   $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
@@ -1293,7 +1295,7 @@ function renderLevels() {
   const wrap = $('tiers'); wrap.innerHTML = '';
   if (allDone()) wrap.insertAdjacentHTML('beforeend', `<div class="banner"><b>Complete!</b><br><span class="note">You beat all ${LEVELS.length} levels. Unstoppable mode is waiting.</span></div>`);
   const next = nextLevel(); let seasonShown = false;
-  for (const t of ['easy', 'easy2', 'medium', 'medium2', ...TIERS.slice(2)]) {
+  for (const t of PATH_TIERS) {
     const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
     if (!r.length) continue;
     const done = r.filter(cleared).length;
@@ -1721,7 +1723,7 @@ function win() {
   S.stars[id] = Math.max(prev, s); S.current = null;
   setCoins(S.coins + coins, coins > 0); save();
   const p = prize(li), next = nextInTrack(li);
-  const finished = first && !isExtra(li) && allDone(); // the 'all levels done' moment is for the main path only
+  const finished = first && allDone();
   const { starsHtml, perfect } = starBlock(s);
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const brag = () => {
