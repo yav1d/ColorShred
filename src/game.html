@@ -95,6 +95,7 @@ button:disabled { cursor: default; }
 .season span { color: var(--muted); font-size: 14px; }
 .tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .tier-head h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .3px; }
+.tier-head small .upd { color: var(--accent); font-weight: 800; }
 .tier-head small { color: var(--muted); font-size: 13px; text-align: right; }
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .lv { aspect-ratio: 1; border-radius: 16px; background: var(--steel); box-shadow: inset 0 -4px 0 #0003, inset 0 1px 0 #ffffff14;
@@ -392,6 +393,8 @@ const TIERS = ['easy', 'medium', 'hard', 'superhard', 'expert', 'maze', 'frozen'
 const TIER = {
   easy: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10 },
   medium: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20 },
+  easy2: { name: 'Easy', color: '#39A0F0', blurb: 'Learn the shredders', reward: 10, extra: true }, // part of Easy (levels 51-250)
+  medium2: { name: 'Medium', color: '#9BD43A', blurb: 'Plan a couple of moves ahead', reward: 20, extra: true }, // part of Medium (levels 301-500)
   hard: { name: 'Hard', color: '#FF8A3D', blurb: 'Tight boards, arrows and ice', reward: 30 },
   superhard: { name: 'Superhard', color: '#F2545B', blurb: 'One spare move and a clock', reward: 50 },
   expert: { name: 'Expert', color: '#1FB5B0', blurb: 'Bigger boards, deeper plans', reward: 40, season: 2 },
@@ -411,7 +414,7 @@ const fmtTime = t => Math.floor(Math.max(0, t) / 60) + ':' + String(Math.max(0, 
 
 // ---------- unlockable board colors: one per campaign level ----------
 const ADJ = ['Neon','Velvet','Electric','Frosted','Molten','Midnight','Solar','Lunar','Wild','Royal','Cosmic','Candy','Dusty','Glacier','Ember','Jungle','Pixel','Retro','Silky','Thunder'];
-const NOUN = ['Lagoon','Mango','Orchid','Comet','Coral','Mint','Plum','Saffron','Cobalt','Rose','Aurora','Berry','Canyon','Dune','Ember','Fern','Galaxy','Honey','Iris','Jade','Kiwi','Lilac','Meadow','Nectar','Ocean','Peach','Quartz','Ruby','Sunset','Tulip','Velvet','Willow','Breeze','Cocoa','Frost','Glow','Lotus','Pebble','Sorbet','Topaz'];
+const NOUN = ['Lagoon','Mango','Orchid','Comet','Coral','Mint','Plum','Saffron','Cobalt','Rose','Aurora','Berry','Canyon','Dune','Ember','Fern','Galaxy','Honey','Iris','Jade','Kiwi','Lilac','Meadow','Nectar','Ocean','Peach','Quartz','Ruby','Sunset','Tulip','Velvet','Willow','Breeze','Cocoa','Frost','Glow','Lotus','Pebble','Sorbet','Topaz','Amber','Bluebell','Cactus','Daisy','Echo','Fig','Garnet','Hazel','Indigo','Juniper','Kelp','Lemon','Maple','Nova','Olive','Pine','Quince','Reef','Sage','Thistle'];
 function prize(li) {
   const h = Math.round((li * 137.508 + 200) % 360), s = 55 + (li * 29) % 30, l = 48 + (li * 13) % 14;
   return { id: li, name: ADJ[li % 20] + ' ' + NOUN[Math.floor(li / 20) % NOUN.length], h, s, l, css: `hsl(${h} ${s}% ${l}%)` };
@@ -439,8 +442,18 @@ if (!S.sndPicked) S.shredStyle = 'arcade'; // the default sound is Arcade bling 
 function save() { lsSet(KEY, JSON.stringify(S)); }
 const idx = {}; LEVELS.forEach((l, i) => { idx[l.id] = i; });
 const cleared = i => !!S.stars[LEVELS[i].id];
-const unlocked = i => i === 0 || cleared(i - 1) || cleared(i);
-const nextLevel = () => { for (let i = 0; i < LEVELS.length; i++) if (!cleared(i)) return i; return -1; };
+// The play path: tiers in this order. Easy Extra and Medium Extra come right after Easy and Medium.
+// (Levels keep their place in LEVELS, so board colors and saved progress don't move.)
+const PATH_TIERS = ['easy', 'easy2', 'medium', 'medium2', 'hard', 'superhard', 'expert', 'maze', 'frozen', 'arrows', 'blitz'];
+const PATH = PATH_TIERS.flatMap(t => LEVELS.map((l, i) => l.tier === t ? i : -1).filter(i => i >= 0));
+const pathPos = {}; PATH.forEach((i, k) => { pathPos[i] = k; });
+const isExtra = i => !!TIER[LEVELS[i].tier].extra;
+const tierIdx = t => { const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); }); return r; };
+const nextInTrack = i => { const k = pathPos[i]; return k != null && k + 1 < PATH.length ? PATH[k + 1] : -1; };
+const unlocked = i => { const k = pathPos[i]; return !k || cleared(PATH[k - 1]) || cleared(i); };
+const levelNo = i => pathPos[i] + 1;          // numbered in play order: Easy 1-250, Medium 251-500, ...
+const levelLabel = i => `Level ${levelNo(i)}`;
+const nextLevel = () => { for (const i of PATH) if (!cleared(i)) return i; return -1; };
 const allDone = () => nextLevel() === -1;
 
 function setCoins(n, bump) {
@@ -868,8 +881,8 @@ function renderWelcome() {
     fl.appendChild(d);
   }
   const n = nextLevel(), cur = S.current && idx[S.current.id];
-  const isNew = n >= 0 && TIERS.indexOf(LEVELS[n].tier) > TIERS.indexOf('superhard') && !LEVELS.some((l, k) => cleared(k) && TIERS.indexOf(l.tier) > TIERS.indexOf('superhard'));
-  $('playSub').textContent = cur != null ? `Continue level ${cur + 1}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${n + 1} · ${TIER[LEVELS[n].tier].name}`;
+  const isNew = n >= 0 && !['easy', 'easy2', 'medium', 'medium2', 'hard', 'superhard'].includes(LEVELS[n].tier) && !tierIdx(LEVELS[n].tier).some(cleared); // first level of a new Season 2 tier
+  $('playSub').textContent = cur != null ? `Continue ${levelLabel(cur).replace('Level', 'level')}` : n < 0 ? 'All levels complete' : `${isNew ? 'New! ' : ''}Level ${levelNo(n)} · ${TIER[LEVELS[n].tier].name}`;
   { const D = dailyState(), th = THEMES[new Date().getDay()], st = liveStreak();
     $('dailySub').innerHTML = (D.done[dayKey()] ? `Done today ✓ · next in ${untilMidnight()}` : th.name) + (st ? ` · ${FLAME} ${st}` : ''); }
   $('unstSub').textContent = S.best ? `Best run: ${S.best} boards cleared` : 'Endless boards against the clock';
@@ -882,9 +895,11 @@ function renderLevels() {
   const wrap = $('tiers'); wrap.innerHTML = '';
   if (allDone()) wrap.insertAdjacentHTML('beforeend', `<div class="banner"><b>Complete!</b><br><span class="note">You beat all ${LEVELS.length} levels. Unstoppable mode is waiting.</span></div>`);
   const next = nextLevel(); let seasonShown = false;
-  for (const t of TIERS) {
-    const r = []; LEVELS.forEach((l, i) => { if (l.tier === t) r.push(i); });
+  const SECTIONS = [['easy', 'easy2'], ['medium', 'medium2'], ...PATH_TIERS.filter(t => !['easy', 'easy2', 'medium', 'medium2'].includes(t)).map(t => [t])];
+  for (const group of SECTIONS) {
+    const t = group[0], r = PATH.filter(i => group.includes(LEVELS[i].tier));
     if (!r.length) continue;
+    const added = r.filter(i => isExtra(i)).length;
     const done = r.filter(cleared).length;
     if (!seasonShown && TIERS.indexOf(t) > TIERS.indexOf('superhard')) { // Season 2 starts with the first tier after Superhard
       seasonShown = true;
@@ -899,8 +914,8 @@ function renderLevels() {
       const ok = unlocked(i), st = S.stars[LEVELS[i].id] || 0;
       if (st) b.classList.add('done');
       if (i === next) b.classList.add('next');
-      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${i + 1}, locked`); b.innerHTML = LOCK; }
-      else b.innerHTML = `${i + 1}<span class="st">${'★'.repeat(st)}</span>`;
+      if (!ok) { b.classList.add('locked'); b.disabled = true; b.setAttribute('aria-label', `Level ${levelNo(i)}, locked`); b.innerHTML = LOCK; }
+      else b.innerHTML = `${levelNo(i)}<span class="st">${'★'.repeat(st)}</span>`;
       b.onclick = () => startCampaign(i, false);
       g.appendChild(b);
     }
@@ -919,7 +934,7 @@ function renderColors() {
   LEVELS.forEach((l, i) => {
     const p = prize(i), ok = cleared(i);
     const b = document.createElement('button'); b.className = 'sw' + (ok ? '' : ' locked') + (S.equipped === i ? ' on' : '');
-    b.innerHTML = `<i style="background:${p.css}"></i>${ok ? p.name : 'Level ' + (i + 1)}`;
+    b.innerHTML = `<i style="background:${p.css}"></i>${ok ? p.name : levelLabel(i)}`;
     if (!ok) b.disabled = true; else b.onclick = () => { S.equipped = i; save(); applyTheme(); renderColors(); sfx('coin'); };
     w.appendChild(b);
   });
@@ -952,7 +967,7 @@ function startCampaign(i, resume) {
   timeLeft = cur ? cur.timeLeft : (W.time || 0);
   hist = []; over = false; busy = false; armed = null;
   show('play');
-  $('lvName').textContent = 'Level ' + (i + 1);
+  $('lvName').textContent = levelLabel(i);
   $('lvTier').textContent = TIER[W.tier].name; $('play').style.setProperty('--tc', TIER[W.tier].color);
   $('movesLabel').textContent = 'Moves left';
   buildBoard(); updateHud(); saveCurrent();
@@ -1297,7 +1312,7 @@ function starSounds(s) {
   winTimers.push(setTimeout(() => winSound('chime', s), landAt(s) + 380));
 }
 // Stars: how many moves over the best possible still earn 3 and 2 stars, per tier. Easy is gentle for new players.
-const STAR_RULE = { easy: [2, 5], medium: [0, 2], daily: [1, 4] };
+const STAR_RULE = { easy: [2, 5], easy2: [2, 5], medium: [0, 2], medium2: [0, 2], daily: [1, 4] };
 const starsFor = (tier, extra) => { const [a3, a2] = STAR_RULE[tier] || [0, 1]; return extra <= a3 ? 3 : extra <= a2 ? 2 : 1; };
 const movesFor3 = () => W.opt + (STAR_RULE[W.tier] || [0])[0];
 function win() {
@@ -1309,7 +1324,7 @@ function win() {
   const coins = first ? TIER[W.tier].reward + s * 5 : Math.max(0, s - prev) * 5;
   S.stars[id] = Math.max(prev, s); S.current = null;
   setCoins(S.coins + coins, coins > 0); save();
-  const p = prize(li), next = li + 1 < LEVELS.length ? li + 1 : -1;
+  const p = prize(li), next = nextInTrack(li);
   const finished = first && allDone();
   const { starsHtml, perfect } = starBlock(s);
   const pick = a => a[Math.floor(Math.random() * a.length)];
