@@ -114,10 +114,33 @@ button:disabled { cursor: default; }
 .lv.locked { opacity: .32; }
 .lv.locked svg { width: 18px; height: 18px; }
 .lv.next { box-shadow: inset 0 -4px 0 #0003, 0 0 0 3px var(--tc); }
-.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; margin-top: 12px; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-top: 10px; }
+.cpreview { display: flex; align-items: center; gap: 16px; margin-top: 6px; padding: 14px; border-radius: 22px; background: #ffffff0d; }
+.mini { position: relative; width: 104px; height: 104px; flex: none; border-radius: 22px; padding: 12px; box-sizing: border-box;
+  background: linear-gradient(180deg, var(--frame-hi), var(--frame-lo)); box-shadow: 0 8px 18px #0006, inset 0 2px 0 #ffffff1c; transition: background .3s; }
+.mini-pit { width: 100%; height: 100%; border-radius: 8px; background: var(--pit); display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 3px; padding: 3px; box-sizing: border-box; }
+.mini-pit i { border-radius: 6px; background: var(--c); box-shadow: inset 0 -4px 0 #0003, inset 0 2px 0 #ffffff40; }
+.mini-gate { position: absolute; right: 3px; top: 30px; width: 6px; height: 44px; border-radius: 3px; background: #23B06A; }
+.cpreview-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cpreview-text small { color: var(--muted); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+.cpreview-text b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; }
+.cpreview-text span { color: var(--muted); font-size: 13px; }
+.cprogress { margin: 14px 2px 0; display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.cbar { height: 10px; border-radius: 5px; background: #ffffff12; overflow: hidden; }
+.cbar i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #F2545B, #FFC93C, #23B06A, #39A0F0, #9A5BE8); transition: width .5s; }
+.ctabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 14px; padding: 4px; border-radius: 16px; background: #00000030; }
+.ctab { padding: 10px 4px; border-radius: 12px; font-size: 14px; color: var(--muted); }
+.ctab.on { background: var(--steel-hi); color: var(--text); box-shadow: inset 0 -3px 0 #0003; }
+#surpriseBtn { margin-top: 10px; padding: 11px; font-size: 15px; }
+.cgroup { margin-top: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+.cgroup h4 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
+.cgroup span { color: var(--muted); font-size: 12px; }
+.sw { position: relative; }
+.sw.on::after { content: "✓"; position: absolute; top: 2px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #241a00; font-size: 12px; display: grid; place-items: center; }
+.sw small { font-size: 9px; color: var(--muted); }
 .sw { border-radius: 16px; padding: 6px 4px 8px; background: var(--steel); display: flex; flex-direction: column; align-items: center; gap: 5px;
   font-size: 10px; line-height: 1.15; text-align: center; color: var(--muted); min-width: 0; }
-.sw i { width: 40px; height: 40px; border-radius: 12px; display: block; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
+.sw i { width: 48px; height: 48px; border-radius: 12px; display: block; box-shadow: inset 0 -5px 0 #0003, inset 0 2px 0 #ffffff40; }
 .sw.locked i { background: repeating-linear-gradient(45deg, #3a3c5e 0 5px, #303252 5px 10px) !important; box-shadow: none; }
 .sw.on { box-shadow: 0 0 0 3px var(--accent); color: var(--text); }
 .note { color: var(--muted); font-size: 14px; text-align: center; margin: 4px 0 0; font-weight: 600; }
@@ -350,8 +373,21 @@ textarea { width: 100%; box-sizing: border-box; min-height: 90px; border-radius:
     <span class="coins"><i class="coin"></i><span class="coinNum">0</span></span>
   </div>
   <div class="scroll" style="flex:1;min-height:0"><div class="list">
-    <p class="note" id="colorsNote">Every level you beat unlocks a new color. Tap one to paint your board with it.</p>
-    <div class="swatches" id="swatches"></div>
+    <div class="cpreview">
+      <div class="mini" aria-hidden="true"><div class="mini-pit">
+        <i style="--c:#F2545B;grid-area:1/1/2/3"></i><i style="--c:#FFC93C;grid-area:1/3/3/4"></i>
+        <i style="--c:#39A0F0;grid-area:2/1/3/2"></i><i style="--c:#9A5BE8;grid-area:2/2/4/3"></i><i style="--c:#23B06A;grid-area:3/3/4/4"></i>
+      </div><span class="mini-gate"></span></div>
+      <div class="cpreview-text"><small>Your board color</small><b id="cName">Classic Steel</b><span id="cFrom">The original look</span></div>
+    </div>
+    <div class="cprogress"><div class="cbar"><i id="cBar"></i></div><span id="cCount">0 of 0 colors collected</span></div>
+    <div class="ctabs" role="tablist">
+      <button class="ctab on" data-tab="mine" role="tab">Collected</button>
+      <button class="ctab" data-tab="rainbow" role="tab">Rainbow</button>
+      <button class="ctab" data-tab="all" role="tab">All</button>
+    </div>
+    <button class="btn alt" id="surpriseBtn">Surprise me</button>
+    <div id="swatches"></div>
   </div></div>
 </div>
 
@@ -1337,22 +1373,50 @@ function renderLevels() {
   show('levels');
   const nb = wrap.querySelector('.lv.next'); if (nb) nb.scrollIntoView({ block: 'center' });
 }
+let colorTab = 'mine';
 function renderColors() {
+  // preview + progress
+  const owned = PATH.filter(cleared), total = PATH.length;
+  const eq = S.equipped;
+  $('cName').textContent = eq == null ? 'Classic Steel' : prize(eq).name;
+  $('cFrom').textContent = eq == null ? 'The original look' : `Unlocked by beating level ${levelNo(eq)}`;
+  $('cCount').textContent = `${owned.length} of ${total} colors collected`;
+  $('cBar').style.width = (100 * owned.length / total).toFixed(1) + '%';
+  document.querySelectorAll('.ctab').forEach(t => { t.classList.toggle('on', t.dataset.tab === colorTab); t.setAttribute('aria-selected', t.dataset.tab === colorTab); });
+  $('surpriseBtn').hidden = !owned.length;
+  // swatches
   const w = $('swatches'); w.innerHTML = '';
-  const have = Object.keys(S.stars).length;
-  $('colorsNote').textContent = `Every level you beat unlocks a new color (${Math.min(have, LEVELS.length)}/${LEVELS.length}). Tap one to paint your board with it.`;
-  const def = document.createElement('button'); def.className = 'sw' + (S.equipped == null ? ' on' : '');
-  def.innerHTML = `<i style="background:#3a3d63"></i>Classic Steel`; def.onclick = () => { S.equipped = null; save(); applyTheme(); renderColors(); };
-  w.appendChild(def);
-  LEVELS.forEach((l, i) => {
-    const p = prize(i), ok = cleared(i);
-    const b = document.createElement('button'); b.className = 'sw' + (ok ? '' : ' locked') + (S.equipped === i ? ' on' : '');
-    b.innerHTML = `<i style="background:${p.css}"></i>${ok ? p.name : levelLabel(i)}`;
-    if (!ok) b.disabled = true; else b.onclick = () => { S.equipped = i; save(); applyTheme(); renderColors(); sfx('coin'); };
-    w.appendChild(b);
-  });
+  const grid = () => { const g = document.createElement('div'); g.className = 'swatches'; w.appendChild(g); return g; };
+  const pick = i => { S.equipped = i; save(); applyTheme(); renderColors(); sfx('coin'); };
+  const swatch = (g, i) => {
+    const ok = i == null || cleared(i), p = i == null ? null : prize(i);
+    const b = document.createElement('button'); b.className = 'sw' + (ok ? '' : ' locked') + (S.equipped === i || (i == null && S.equipped == null) ? ' on' : '');
+    b.innerHTML = i == null ? `<i style="background:#3a3d63"></i>Classic Steel`
+      : ok ? `<i style="background:${p.css}"></i>${p.name}` : `<i></i><small>Level ${levelNo(i)}</small>`;
+    if (!ok) { b.disabled = true; b.setAttribute('aria-label', `Locked, beat level ${levelNo(i)}`); } else b.onclick = () => pick(i);
+    g.appendChild(b);
+  };
+  if (colorTab === 'all') {
+    const SECTIONS = [['easy', 'easy2'], ['medium', 'medium2'], ...PATH_TIERS.filter(t => !['easy', 'easy2', 'medium', 'medium2'].includes(t)).map(t => [t])];
+    swatch(grid(), null);
+    for (const group of SECTIONS) {
+      const r = PATH.filter(i => group.includes(LEVELS[i].tier)); if (!r.length) continue;
+      w.insertAdjacentHTML('beforeend', `<div class="cgroup"><h4 style="color:${TIER[group[0]].color}">${TIER[group[0]].name}</h4><span>${r.filter(cleared).length} of ${r.length}</span></div>`);
+      const g = grid(); r.forEach(i => swatch(g, i));
+    }
+  } else {
+    let list = owned.slice();
+    if (colorTab === 'rainbow') list.sort((a, b) => prize(a).h - prize(b).h || prize(a).l - prize(b).l);
+    const g = grid(); swatch(g, null); list.forEach(i => swatch(g, i));
+    if (!owned.length) w.insertAdjacentHTML('beforeend', '<p class="note" style="margin-top:14px">Beat a level to collect your first color.</p>');
+  }
   show('colors');
 }
+document.querySelectorAll('.ctab').forEach(t => t.onclick = () => { colorTab = t.dataset.tab; renderColors(); });
+$('surpriseBtn').onclick = () => {
+  const owned = PATH.filter(cleared).filter(i => i !== S.equipped); if (!owned.length) return;
+  S.equipped = owned[Math.floor(Math.random() * owned.length)]; save(); applyTheme(); renderColors(); sfx('magic');
+};
 
 // ---------- game state ----------
 const PU = {
